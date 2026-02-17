@@ -17,6 +17,8 @@ services:
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
             XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
+            # Hora CDMX
+            TZ: 'America/Mexico_City'
         volumes:
             - '.:/var/www/html'
         networks:
@@ -24,9 +26,16 @@ services:
         depends_on:
             - mysql
             - redis
-            - meilisearch
-            - mailpit
-            - selenium
+
+    # --- TÚNEL CLOUDFLARE ---
+    cloudflared:
+        image: cloudflare/cloudflared:latest
+        restart: unless-stopped
+        command: tunnel --no-autoupdate run --token eyJhIjoiZGI3MTQwY2I2NTA1MjU3MmZhYjgwMmQ2MGY0ODU2MjkiLCJ0IjoiNjdhMzIyMzgtZGY2MS00NzZhLWEwYjYtNTY1Mzc3NzJmZmZhIiwicyI6IllqY3daalppT0dVdFpqWmtPQzAwTmpJM0xXRXdaakV0TWpKaU1qRTRaV0prTkRNMSJ9
+        networks:
+            - sail
+
+    # --- BASE DE DATOS MYSQL ---
     mysql:
         image: 'mysql:8.4'
         ports:
@@ -38,10 +47,9 @@ services:
             MYSQL_USER: '${DB_USERNAME}'
             MYSQL_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ALLOW_EMPTY_PASSWORD: 1
-            MYSQL_EXTRA_OPTIONS: '${MYSQL_EXTRA_OPTIONS:-}'
+            MYSQL_EXTRA_OPTIONS: '--default-authentication-plugin=mysql_native_password'
         volumes:
             - 'sail-mysql:/var/lib/mysql'
-            - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
         networks:
             - sail
         healthcheck:
@@ -52,6 +60,7 @@ services:
                 - '-p${DB_PASSWORD}'
             retries: 3
             timeout: 5s
+
     redis:
         image: 'redis:alpine'
         ports:
@@ -67,47 +76,11 @@ services:
                 - ping
             retries: 3
             timeout: 5s
-    meilisearch:
-        image: 'getmeili/meilisearch:latest'
-        ports:
-            - '${FORWARD_MEILISEARCH_PORT:-7700}:7700'
-        environment:
-            MEILI_NO_ANALYTICS: '${MEILISEARCH_NO_ANALYTICS:-false}'
-        volumes:
-            - 'sail-meilisearch:/meili_data'
-        networks:
-            - sail
-        healthcheck:
-            test:
-                - CMD
-                - wget
-                - '--no-verbose'
-                - '--spider'
-                - 'http://127.0.0.1:7700/health'
-            retries: 3
-            timeout: 5s
-    mailpit:
-        image: 'axllent/mailpit:latest'
-        ports:
-            - '${FORWARD_MAILPIT_PORT:-1025}:1025'
-            - '${FORWARD_MAILPIT_DASHBOARD_PORT:-8025}:8025'
-        networks:
-            - sail
-    selenium:
-        image: selenium/standalone-chromium
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
-        volumes:
-            - '/dev/shm:/dev/shm'
-        networks:
-            - sail
+
 networks:
     sail:
         driver: bridge
+
 volumes:
     sail-mysql:
-        driver: local
     sail-redis:
-        driver: local
-    sail-meilisearch:
-        driver: local
