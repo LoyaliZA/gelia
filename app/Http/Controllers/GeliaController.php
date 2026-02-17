@@ -4,52 +4,47 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Rap2hpoutre\FastExcel\FastExcel;
-use Illuminate\Support\Facades\Validator; 
+use Illuminate\Support\Facades\Validator;
 
 class GeliaController extends Controller
 {
     public function generar(Request $request)
     {
-        // 1. CONFIGURACIÓN
         set_time_limit(0);
         ini_set('memory_limit', '-1');
 
-        // 2. VALIDACIÓN (Usando la Facade correctamente)
+        // 1. VALIDACIÓN FLEXIBLE
+        // "Existencias" es obligatorio.
+        // "Precios" es obligatorio SOLO SI no subieron "Costos".
+        // "Costos" es obligatorio SOLO SI no subieron "Precios".
         $validator = Validator::make($request->all(), [
             'existencias' => 'required|file',
-            'precios'     => 'required|file',
-            'costos'      => 'nullable|file', // Opcional
+            'precios'     => 'nullable|file|required_without:costos',
+            'costos'      => 'nullable|file|required_without:precios',
+        ], [
+            'precios.required_without' => 'Debes subir al menos el archivo de Precios o el de Costos.',
+            'costos.required_without' => 'Debes subir al menos el archivo de Precios o el de Costos.',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // 3. DETERMINAR COLUMNAS Y NOMBRE DEL ARCHIVO
+        // 2. CONFIGURACIÓN
         $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA'); 
         $ordenCadena = $request->input('orden_final'); 
-        
-        $fecha = date('d-m-y'); // Formato DD-MM-AA
-        
+        $fecha = date('d-m-y'); 
+
+        // Nombre del archivo
         switch ($tipoLista) {
-            case 'resurtido':
-                $nombreArchivo = "LISTA-DE-RESURTIDO-$fecha.xlsx";
-                break;
-            case 'costos':
-                $nombreArchivo = "LISTA-DE-COSTOS-$fecha.xlsx";
-                break;
-            case 'actualizada':
-                $nombreArchivo = "LISTA-ACTUALIZADA-$fecha.xlsx";
-                break;
-            case 'inventario': 
-                $nombreArchivo = "LISTA-DE-INVENTARIO-$fecha.xlsx";
-                break;
-            default:
-                $nombreArchivo = "LISTA-PERSONALIZADA-$fecha.xlsx";
-                break;
+            case 'resurtido': $nombreArchivo = "LISTA-DE-RESURTIDO-$fecha.xlsx"; break;
+            case 'costos': $nombreArchivo = "LISTA-DE-COSTOS-$fecha.xlsx"; break;
+            case 'actualizada': $nombreArchivo = "LISTA-ACTUALIZADA-$fecha.xlsx"; break;
+            case 'inventario': $nombreArchivo = "LISTA-DE-INVENTARIO-$fecha.xlsx"; break;
+            default: $nombreArchivo = "LISTA-PERSONALIZADA-$fecha.xlsx"; break;
         }
 
-        // Definir columnas
+        // Columnas
         if (!empty($ordenCadena)) {
             $columnasSeleccionadas = explode(',', $ordenCadena);
         } elseif ($request->has('columnas')) {
@@ -58,18 +53,20 @@ class GeliaController extends Controller
             return response()->json(['error' => 'Debes seleccionar columnas.'], 422);
         }
 
-        // 4. LEER PRECIOS
+        // 3. LEER PRECIOS (Solo si existe el archivo)
         $diccionarioPrecios = [];
-        $this->procesarArchivoSeguro($request->file('precios'), function ($ruta) use (&$diccionarioPrecios) {
-            (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$diccionarioPrecios) {
-                if (!isset($linea[1]) || $linea[1] == 'CODIGO_DEL_PRODUCTO' || $linea[1] == '') return;
-                $sku = ltrim(trim((string)$linea[1]), '0');
-                $precio = $linea[7] ?? 0;
-                $diccionarioPrecios[$sku] = is_numeric($precio) ? (float)$precio : 0.0;
+        if ($request->hasFile('precios')) {
+            $this->procesarArchivoSeguro($request->file('precios'), function ($ruta) use (&$diccionarioPrecios) {
+                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$diccionarioPrecios) {
+                    if (!isset($linea[1]) || $linea[1] == 'CODIGO_DEL_PRODUCTO' || $linea[1] == '') return;
+                    $sku = ltrim(trim((string)$linea[1]), '0');
+                    $precio = $linea[7] ?? 0;
+                    $diccionarioPrecios[$sku] = is_numeric($precio) ? (float)$precio : 0.0;
+                });
             });
-        });
+        }
 
-        // 5. LEER COSTOS WIZERP (Opcional)
+        // 4. LEER COSTOS WIZERP (Solo si existe el archivo)
         $diccionarioCostosWizerp = [];
         if ($request->hasFile('costos')) {
             $this->procesarArchivoSeguro($request->file('costos'), function ($ruta) use (&$diccionarioCostosWizerp) {
@@ -83,13 +80,18 @@ class GeliaController extends Controller
             });
         }
 
-        // 6. PROCESAR EXISTENCIAS
+        // 5. PROCESAR EXISTENCIAS
         $listaCompleta = []; 
         $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas) {
             $reader = (new FastExcel)->withoutHeaders()->import($ruta);
             foreach ($reader as $linea) {
-                if (!isset($linea[4]) || $linea[4] == 'Código') continue; 
+                // CORRECCIÓN DE FILAS VACÍAS:
+                // Verificamos que exista la columna 4 y que NO esté vacía después de limpiar espacios.
+                if (!isset($linea[4]) || $linea[4] == 'Código') continue;
+                
                 $skuCrudo = trim((string)$linea[4]);
+                if ($skuCrudo === '') continue; // <--- ESTO ELIMINA LAS FILAS VACÍAS/CEROS
+
                 $skuBuscador = ltrim($skuCrudo, '0');
 
                 // Extracción
@@ -100,7 +102,7 @@ class GeliaController extends Controller
                 $existenciaRaw = $linea[10] ?? 0;
                 $existencia = is_numeric($existenciaRaw) ? (int)$existenciaRaw : 0;
 
-                // Cruces
+                // Cruces (Si no hay diccionario, devuelve 0)
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
                 $costoWizerp = $diccionarioCostosWizerp[$skuBuscador] ?? 0.0;
 
@@ -131,14 +133,14 @@ class GeliaController extends Controller
             }
         });
 
-        // 7. ORDENAMIENTO (A-Z)
+        // 6. ORDENAMIENTO
         if (in_array('Descripcion', $columnasSeleccionadas)) {
             usort($listaCompleta, function ($a, $b) {
                 return strcasecmp($a['Descripcion'] ?? '', $b['Descripcion'] ?? '');
             });
         }
 
-        // 8. DESCARGA
+        // 7. DESCARGA
         return (new FastExcel(collect($listaCompleta)))->download($nombreArchivo);
     }
 
