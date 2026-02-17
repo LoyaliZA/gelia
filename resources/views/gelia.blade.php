@@ -260,7 +260,7 @@
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">GELIA</span>
                     <span class="text-lg text-gray-500 font-normal ml-2">v2.0</span>
                 </h1>
-                <p class="text-gray-400 mt-1 text-sm">Sistema AJAX: Generación Múltiple sin Recargas.</p>
+                <p class="text-gray-400 mt-1 text-sm">Sistema Generador de Listas Inteligente y Automatizado</p>
             </div>
         </header>
 
