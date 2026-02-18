@@ -1,0 +1,19 @@
+/* --- gelia.css --- */
+
+/* Scrollbar Personalizado */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0d1117; }
+::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
+
+/* Animaciones Toast */
+.toast-enter { transform: translateY(-20px); opacity: 0; }
+.toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-out; }
+
+/* Estilo visual para campos bloqueados */
+.disabled-option { 
+    opacity: 0.3; 
+    pointer-events: none; 
+    filter: grayscale(100%);
+    border-color: #374151; /* gris oscuro */
+}
