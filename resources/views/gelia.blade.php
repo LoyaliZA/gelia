@@ -93,20 +93,20 @@
                     </h2>
                     <div class="grid grid-cols-2 gap-3">
                         <button type="button" onclick="procesarSolicitud('resurtido')" class="p-4 bg-dark-800 border border-dark-700 hover:border-blue-500 hover:bg-dark-700 rounded-xl text-left group transition">
-                            <span class="block text-blue-400 font-bold mb-1 group-hover:text-blue-300">Resurtido</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Existencias + Precios</span>
+                            <span class="block text-blue-400 font-bold mb-1 group-hover:text-blue-300">Lista de Resurtido</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Muestra los campos base de Existencias, PG, Plataformas y Lista 3</span>
                         </button>
                         <button type="button" onclick="procesarSolicitud('costos')" class="p-4 bg-dark-800 border border-dark-700 hover:border-purple-500 hover:bg-dark-700 rounded-xl text-left group transition">
-                            <span class="block text-purple-400 font-bold mb-1 group-hover:text-purple-300">Costos</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Existencias + Costos</span>
+                            <span class="block text-purple-400 font-bold mb-1 group-hover:text-purple-300">Lista de Costos</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Muestra los campos base de Existencias y Costos</span>
                         </button>
                         <button type="button" onclick="procesarSolicitud('actualizada')" class="p-4 bg-dark-800 border border-dark-700 hover:border-orange-500 hover:bg-dark-700 rounded-xl text-left group transition">
                             <span class="block text-orange-400 font-bold mb-1 group-hover:text-orange-300">Actualizada</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Existencias + Precios</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Muestra los campos base de Existencias, Costo y Plataformas</span>
                         </button>
                         <button type="button" onclick="procesarSolicitud('inventario')" class="p-4 bg-dark-800 border border-dark-700 hover:border-teal-500 hover:bg-dark-700 rounded-xl text-left group transition">
-                            <span class="block text-teal-400 font-bold mb-1 group-hover:text-teal-300">Bellaroma</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Existencias + Precios</span>
+                            <span class="block text-teal-400 font-bold mb-1 group-hover:text-teal-300">Inventario Bellaroma</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Muestra los campos base de Existencias y PG y Lista 3</span>
                         </button>
                     </div>
                 </div>
@@ -117,7 +117,7 @@
                     </h2>
                     <div class="bg-dark-800 border border-dark-700 p-5 rounded-xl">
                         <p class="text-gray-400 text-sm mb-4">
-                            Genera una lista limpia de IDs y Nombres. Elimina ceros a la izquierda y corrige acentos automáticamente.
+                            Genera una lista limpia de IDs y Nombres. Limpia y corrige el archivo CSV.
                         </p>
                         <button type="button" onclick="procesarSolicitud('clientes')" class="w-full py-3 bg-yellow-600/20 border border-yellow-600/50 text-yellow-400 hover:bg-yellow-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -130,7 +130,7 @@
             </div>
 
             <div class="border-t border-dark-700 pt-8">
-                <h2 class="text-lg font-bold text-gray-300 mb-4">🛠️ O arma tu lista personalizada</h2>
+                <h2 class="text-lg font-bold text-gray-300 mb-4">🛠️ Genera una lista personalizada</h2>
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
                     @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'] as $campo)
@@ -151,13 +151,13 @@
 
                      <label id="label-CostoCalculado" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                         <input type="checkbox" id="check-CostoCalculado" value="CostoCalculado" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                        <span class="text-sm font-medium text-gray-300">Costo (Calculado)</span>
+                        <span class="text-sm font-medium text-gray-300">Costo (L.Resurtido)</span>
                         <span id="badge-CostoCalculado" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
                     </label>
 
                      <label id="label-CostoWizerp" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                         <input type="checkbox" id="check-CostoWizerp" value="CostoWizerp" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                        <span class="text-sm font-medium text-gray-300">Costo (Wizerp)</span>
+                        <span class="text-sm font-medium text-gray-300">Costo (L.Costos)</span>
                         <span id="badge-CostoWizerp" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
                     </label>
 
