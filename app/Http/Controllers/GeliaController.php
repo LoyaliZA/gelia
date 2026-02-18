@@ -13,10 +13,59 @@ class GeliaController extends Controller
         set_time_limit(0);
         ini_set('memory_limit', '-1');
 
-        // 1. VALIDACIÓN FLEXIBLE
-        // "Existencias" es obligatorio.
-        // "Precios" es obligatorio SOLO SI no subieron "Costos".
-        // "Costos" es obligatorio SOLO SI no subieron "Precios".
+        $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA'); 
+        $fecha = date('d-m-y');
+
+        // ---------------------------------------------------------
+        // MODO 1: LIMPIEZA DE CLIENTES (Independiente)
+        // ---------------------------------------------------------
+        if ($tipoLista === 'clientes') {
+            $validator = Validator::make($request->all(), [
+                'clientes' => 'required|file',
+            ], [
+                'clientes.required' => 'Es necesario subir el archivo CSV de Clientes.'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $listaClientes = [];
+            
+            // Procesamos el archivo CSV
+            $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaClientes) {
+                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaClientes) {
+                    
+                    $idRaw = $linea[0] ?? '';
+                    $nombreRaw = $linea[1] ?? '';
+
+                    // LIMPIEZA DE CEROS Y ESPACIOS
+                    // ltrim($var, '0') elimina los ceros a la izquierda (0010 -> 10)
+                    $id = ltrim(trim((string)$idRaw), '0'); 
+                    $nombre = trim((string)$nombreRaw);
+
+                    // FILTRADO:
+                    // Si al quitar ceros queda vacío (ej: "000" o ""), se salta.
+                    if ($id === '' || strtolower($id) === 'id' || strtolower($id) === 'clientes') {
+                        return;
+                    }
+
+                    $listaClientes[] = [
+                        'ID'     => $id,
+                        'NOMBRE' => $nombre,
+                    ];
+                });
+            });
+
+            return (new FastExcel(collect($listaClientes)))->download("CLIENTES-LIMPIOS-$fecha.xlsx");
+        }
+
+
+        // ---------------------------------------------------------
+        // MODO 2: SISTEMA DE EXISTENCIAS (Gelia Original)
+        // ---------------------------------------------------------
+
+        // 1. VALIDACIÓN
         $validator = Validator::make($request->all(), [
             'existencias' => 'required|file',
             'precios'     => 'nullable|file|required_without:costos',
@@ -30,12 +79,9 @@ class GeliaController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // 2. CONFIGURACIÓN
-        $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA'); 
+        // 2. CONFIGURACIÓN NOMBRES
         $ordenCadena = $request->input('orden_final'); 
-        $fecha = date('d-m-y'); 
 
-        // Nombre del archivo
         switch ($tipoLista) {
             case 'resurtido': $nombreArchivo = "LISTA-DE-RESURTIDO-$fecha.xlsx"; break;
             case 'costos': $nombreArchivo = "LISTA-DE-COSTOS-$fecha.xlsx"; break;
@@ -53,7 +99,7 @@ class GeliaController extends Controller
             return response()->json(['error' => 'Debes seleccionar columnas.'], 422);
         }
 
-        // 3. LEER PRECIOS (Solo si existe el archivo)
+        // 3. LEER PRECIOS
         $diccionarioPrecios = [];
         if ($request->hasFile('precios')) {
             $this->procesarArchivoSeguro($request->file('precios'), function ($ruta) use (&$diccionarioPrecios) {
@@ -66,7 +112,7 @@ class GeliaController extends Controller
             });
         }
 
-        // 4. LEER COSTOS WIZERP (Solo si existe el archivo)
+        // 4. LEER COSTOS WIZERP
         $diccionarioCostosWizerp = [];
         if ($request->hasFile('costos')) {
             $this->procesarArchivoSeguro($request->file('costos'), function ($ruta) use (&$diccionarioCostosWizerp) {
@@ -85,16 +131,13 @@ class GeliaController extends Controller
         $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas) {
             $reader = (new FastExcel)->withoutHeaders()->import($ruta);
             foreach ($reader as $linea) {
-                // CORRECCIÓN DE FILAS VACÍAS:
-                // Verificamos que exista la columna 4 y que NO esté vacía después de limpiar espacios.
                 if (!isset($linea[4]) || $linea[4] == 'Código') continue;
                 
                 $skuCrudo = trim((string)$linea[4]);
-                if ($skuCrudo === '') continue; // <--- ESTO ELIMINA LAS FILAS VACÍAS/CEROS
+                if ($skuCrudo === '') continue; 
 
                 $skuBuscador = ltrim($skuCrudo, '0');
 
-                // Extracción
                 $almacen = $linea[1] ?? '';
                 $folio = $linea[3] ?? '';
                 $descripcion = $linea[5] ?? '';
@@ -102,11 +145,9 @@ class GeliaController extends Controller
                 $existenciaRaw = $linea[10] ?? 0;
                 $existencia = is_numeric($existenciaRaw) ? (int)$existenciaRaw : 0;
 
-                // Cruces (Si no hay diccionario, devuelve 0)
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
                 $costoWizerp = $diccionarioCostosWizerp[$skuBuscador] ?? 0.0;
 
-                // Fórmulas
                 $costoCalculado = $pg > 0 ? $pg / 1.3827 : 0.0;
                 $plataformas = $pg * 0.77;
                 $lista3 = $pg * 0.8572;
@@ -140,7 +181,6 @@ class GeliaController extends Controller
             });
         }
 
-        // 7. DESCARGA
         return (new FastExcel(collect($listaCompleta)))->download($nombreArchivo);
     }
 
