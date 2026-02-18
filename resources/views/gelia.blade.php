@@ -7,7 +7,31 @@
     <title>G.E.L.I.A. v2.2 | Sistema de Listas</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="{{ asset('css/gelia.css') }}">
+    
+    <style>
+        /* Scrollbar Personalizado */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
+
+        /* Scrollbar específico para el modal */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #161b22; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+        /* Animaciones */
+        .toast-enter { transform: translateY(-20px); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-out; }
+
+        /* Visual para bloqueados */
+        .disabled-option { 
+            opacity: 0.3; 
+            pointer-events: none; 
+            filter: grayscale(100%);
+            border-color: #374151; 
+        }
+    </style>
 </head>
 
 <body class="bg-dark-900 text-dark-text min-h-screen font-sans selection:bg-blue-500 selection:text-white pb-20">
@@ -53,7 +77,6 @@
                         <label class="block text-sm font-medium text-gray-400 mb-1">Descripción:</label>
                         <textarea name="descripcion" rows="2" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none" placeholder="¿Para qué sirve esta lista?"></textarea>
                     </div>
-                    
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Nombre Archivo Salida:</label>
                         <div class="flex items-center">
@@ -90,7 +113,7 @@
                         <label class="block text-sm font-bold text-white mb-2">2. Selecciona Columnas (En orden):</label>
                         <p class="text-xs text-gray-500 mb-2">Haz clic para añadir/quitar. El número indica el orden.</p>
                         <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
-                             @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'Costo (L.resurtido)', 'Costo (L.Costos)'] as $campo)
+                            @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'CostoCalculado', 'CostoWizerp'] as $campo)
                                 <label class="relative flex items-center space-x-2 bg-dark-900 p-2 rounded border border-dark-700 cursor-pointer hover:bg-dark-700 transition select-none">
                                     <input type="checkbox" value="{{ $campo }}" onchange="actualizarOrdenCreacion(this)" class="w-4 h-4 rounded bg-dark-800 border-dark-600">
                                     <span class="text-xs text-gray-300">{{ $campo }}</span>
@@ -252,16 +275,15 @@
 
                      <label id="label-CostoCalculado" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                         <input type="checkbox" id="check-CostoCalculado" value="CostoCalculado" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                        <span class="text-sm font-medium text-gray-300">Costo (L.Resurtido)</span>
+                        <span class="text-sm font-medium text-gray-300">Costo (L.resurtido)</span>
                         <span id="badge-CostoCalculado" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
                     </label>
 
                      <label id="label-CostoWizerp" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                         <input type="checkbox" id="check-CostoWizerp" value="CostoWizerp" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                        <span class="text-sm font-medium text-gray-300">Costo (L.Costos)</span>
+                        <span class="text-sm font-medium text-gray-300">Costo (L. Costos)</span>
                         <span id="badge-CostoWizerp" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
                     </label>
-
                 </div>
                 <button type="button" onclick="procesarSolicitud('manual')" class="w-full bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 text-white font-bold py-4 rounded-xl border border-dark-700 shadow-lg">
                     Generar Manualmente
@@ -271,17 +293,368 @@
     </div>
 
     <script>
+        // Configuración inyectada desde Laravel (Sintaxis segura)
         window.GeliaConfig = {
             routes: {
                 generar: "{{ route('gelia.generar') }}",
                 guardar: "{{ route('gelia.guardar') }}",
                 eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}"
             },
-            // Corrección segura para evitar error visual en editores
             customLists: {!! json_encode($listasPersonalizadas ?? []) !!}
         };
-    </script>
-    <script src="{{ asset('js/gelia.js') }}"></script>
-</body>
 
+        /* --- LÓGICA JS INTEGRADA --- */
+
+        // 1. BLINDAJE DE TAILWIND (Evita que el script muera si se bloquea el CDN)
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = {
+                darkMode: 'class',
+                theme: {
+                    extend: {
+                        colors: {
+                            dark: { 900: '#0d1117', 800: '#161b22', 700: '#21262d', text: '#c9d1d9' }
+                        }
+                    }
+                }
+            }
+        } else {
+            console.warn("⚠️ Tailwind CSS bloqueado. Funcionalidad JS intacta.");
+        }
+
+        // Variables Globales
+        let ordenSeleccionado = [];
+        let ordenCreacion = [];
+
+        // Mapa de dependencias
+        const camposPorArchivo = {
+            'existencias': ['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'],
+            'precios':     ['PG', 'Plataformas', 'Lista3', 'Lista4', 'CostoCalculado'],
+            'costos':      ['CostoWizerp']
+        };
+
+        // Inicio
+        document.addEventListener('DOMContentLoaded', () => {
+            verificarArchivos();
+            
+            const formCrear = document.getElementById('form-crear-lista');
+            if(formCrear) {
+                formCrear.addEventListener('submit', guardarNuevaLista);
+            }
+        });
+
+        // --- FUNCIONES GLOBALES (Window) ---
+        
+        window.toggleModal = function(show) {
+            const modal = document.getElementById('modal-nueva-lista');
+            if (show) modal.classList.remove('hidden');
+            else modal.classList.add('hidden');
+        }
+
+        window.actualizarOrdenCreacion = function(checkbox) {
+            const valor = checkbox.value;
+            const badge = document.getElementById('badge-creacion-' + valor);
+            
+            if (checkbox.checked) {
+                ordenCreacion.push(valor);
+                badge.innerText = ordenCreacion.length;
+                badge.classList.remove('hidden');
+            } else {
+                ordenCreacion = ordenCreacion.filter(item => item !== valor);
+                badge.classList.add('hidden');
+                ordenCreacion.forEach((item, index) => {
+                    document.getElementById('badge-creacion-' + item).innerText = index + 1;
+                });
+            }
+            document.getElementById('input-columnas-exportar').value = ordenCreacion.join(',');
+        }
+
+        window.guardarNuevaLista = async function(e) {
+            e.preventDefault();
+            
+            if (ordenCreacion.length === 0) {
+                alert("Debes seleccionar al menos una columna para exportar.");
+                return;
+            }
+
+            const form = e.target;
+            const formData = new FormData(form);
+
+            mostrarCarga("Guardando configuración...");
+
+            try {
+                const response = await fetch(window.GeliaConfig.routes.guardar, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    if (data.errors) {
+                        let msg = Object.values(data.errors).flat().join('\n');
+                        alert("Error de validación:\n" + msg);
+                    } else {
+                        alert("Error: " + (data.message || "Error desconocido"));
+                    }
+                } else {
+                    alert("✅ Lista guardada con éxito. La página se recargará.");
+                    window.location.reload();
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("Error de red: " + error.message);
+            } finally {
+                ocultarCarga();
+            }
+        }
+
+        window.actualizarOrden = function(checkbox) {
+            const valor = checkbox.value;
+            const badge = document.getElementById('badge-' + valor);
+
+            if (checkbox.checked) {
+                ordenSeleccionado.push(valor);
+                badge.innerText = ordenSeleccionado.length;
+                badge.classList.remove('hidden');
+            } else {
+                ordenSeleccionado = ordenSeleccionado.filter(item => item !== valor);
+                badge.classList.add('hidden');
+                ordenSeleccionado.forEach((item, index) => {
+                    document.getElementById('badge-' + item).innerText = index + 1;
+                });
+            }
+        }
+
+        window.verificarArchivos = function() {
+            const fileExistencias = document.getElementById('file-existencias');
+            if (!fileExistencias) return; 
+
+            const inputs = {
+                'existencias': fileExistencias.value !== "",
+                'precios':     document.getElementById('file-precios').value !== "",
+                'costos':      document.getElementById('file-costos').value !== ""
+            };
+
+            for (const [archivo, campos] of Object.entries(camposPorArchivo)) {
+                const estaSubido = inputs[archivo];
+                campos.forEach(campo => {
+                    const label = document.getElementById('label-' + campo);
+                    const checkbox = document.getElementById('check-' + campo);
+
+                    if (label && checkbox) {
+                        if (estaSubido) {
+                            label.classList.remove('disabled-option');
+                            label.classList.add('hover:bg-dark-700', 'cursor-pointer');
+                            checkbox.disabled = false;
+                        } else {
+                            label.classList.add('disabled-option');
+                            label.classList.remove('hover:bg-dark-700', 'cursor-pointer');
+                            checkbox.disabled = true;
+                            if(checkbox.checked) {
+                                checkbox.checked = false;
+                                actualizarOrden(checkbox);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        window.procesarSolicitud = async function(tipo) {
+            // Validaciones básicas
+            const fileExistencias = document.getElementById('file-existencias');
+            const tieneExistencias = fileExistencias && fileExistencias.value !== "";
+            const tienePrecios = document.getElementById('file-precios').value !== "";
+            const tieneCostos = document.getElementById('file-costos').value !== "";
+
+            if (tipo === 'clientes') {
+                const fileClientes = document.getElementById('file-clientes').value;
+                if (!fileClientes) {
+                    mostrarToast("⚠️ Sube el archivo CSV de Clientes", "red");
+                    return;
+                }
+            } 
+            else if (!isNaN(tipo)) { // Es lista de BD
+                if (!tieneExistencias) {
+                    mostrarToast("❌ Existencias es obligatorio.", "red");
+                    return;
+                }
+                if (window.GeliaConfig && window.GeliaConfig.customLists) {
+                    const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
+                    if (listaConfig) {
+                        const reqs = listaConfig.archivos_requeridos || [];
+                        if (reqs.includes('precios') && !tienePrecios) {
+                            mostrarToast(`⚠️ Requiere PRECIOS.`, "red");
+                            return;
+                        }
+                        if (reqs.includes('costos') && !tieneCostos) {
+                            mostrarToast(`⚠️ Requiere COSTOS.`, "red");
+                            return;
+                        }
+                    }
+                }
+            }
+            else { // Listas Hardcoded
+                if (!tieneExistencias) {
+                    mostrarToast("❌ Primero sube Existencias", "red");
+                    return;
+                }
+                if ((tipo === 'resurtido' || tipo === 'actualizada' || tipo === 'inventario') && !tienePrecios) {
+                    mostrarToast("⚠️ Esta lista requiere: Existencias + Precios", "red");
+                    return;
+                }
+                if (tipo === 'costos' && !tieneCostos) {
+                    mostrarToast("⚠️ Esta lista requiere: Existencias + Costos", "red");
+                    return;
+                }
+            }
+
+            // Configuración del envío
+            let columnas = [];
+            let nombreTipo = "";
+
+            if (!isNaN(tipo)) {
+                const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
+                nombreTipo = listaConfig ? listaConfig.titulo_lista : "Lista Personalizada";
+            } 
+            else if (tipo === 'clientes') {
+                nombreTipo = "Limpieza de Clientes";
+            } else if (tipo === 'resurtido') {
+                columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Lista3'];
+                nombreTipo = "Lista de Resurtido";
+            } else if (tipo === 'costos') {
+                columnas = ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp'];
+                nombreTipo = "Lista de Costos";
+            } else if (tipo === 'actualizada') {
+                columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas'];
+                nombreTipo = "Lista Actualizada";
+            } else if (tipo === 'inventario') {
+                columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Lista3'];
+                nombreTipo = "Lista de Inventario";
+            } else {
+                columnas = ordenSeleccionado;
+                nombreTipo = "Lista Personalizada";
+                if (columnas.length === 0) {
+                    mostrarToast("❌ Error: Selecciona columnas.", "red");
+                    return;
+                }
+            }
+
+            const form = document.getElementById('form-principal');
+            const formData = new FormData(form);
+            
+            if (columnas.length > 0) {
+                formData.append('orden_final', columnas.join(','));
+            }
+            formData.append('tipo_lista', tipo);
+
+            mostrarCarga(`Generando: ${nombreTipo}...`);
+            document.getElementById('alertas').innerHTML = '';
+
+            try {
+                const urlGenerar = window.GeliaConfig.routes.generar;
+                const response = await fetch(urlGenerar, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const data = await response.json();
+                    if (data.errors) {
+                        let html = `<ul class='list-disc ml-5'>`;
+                        Object.values(data.errors).forEach(err => html += `<li>${err}</li>`);
+                        html += `</ul>`;
+                        mostrarError(html);
+                    } else {
+                        throw new Error(data.error || 'Error en el servidor');
+                    }
+                    ocultarCarga();
+                    return;
+                }
+
+                const blob = await response.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                
+                const contentDisposition = response.headers.get('Content-Disposition');
+                let fileName = `${nombreTipo}.xlsx`;
+                if (contentDisposition) {
+                    const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
+                    if (fileNameMatch && fileNameMatch.length === 2) fileName = fileNameMatch[1];
+                }
+                
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                
+                ocultarCarga();
+                mostrarToast("✅ ¡Archivo Generado Exitosamente!", "green");
+
+            } catch (error) {
+                console.error(error);
+                ocultarCarga();
+                mostrarToast("❌ Error: " + error.message, "red");
+            }
+        }
+
+        window.eliminarLista = async function(event, id) {
+            event.stopPropagation();
+            if (!confirm("¿Eliminar esta lista personalizada?")) return;
+            mostrarCarga("Eliminando...");
+            try {
+                const urlEliminar = window.GeliaConfig.routes.eliminar.replace(':id', id);
+                const response = await fetch(urlEliminar, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                        'Accept': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    alert("🗑️ Eliminada.");
+                    window.location.reload();
+                } else {
+                    alert("❌ Error al eliminar.");
+                }
+            } catch (error) {
+                console.error(error);
+                alert("Error de red.");
+            } finally {
+                ocultarCarga();
+            }
+        }
+
+        // Utilidades
+        window.mostrarCarga = function(m) {
+            document.getElementById('overlay-carga').classList.remove('hidden');
+            document.getElementById('texto-carga').innerText = m;
+        }
+        window.ocultarCarga = function() {
+            document.getElementById('overlay-carga').classList.add('hidden');
+        }
+        window.mostrarToast = function(m, c) {
+            const t = document.getElementById('toast');
+            const tm = document.getElementById('toast-msg');
+            t.className = `fixed top-5 right-5 z-50 px-6 py-4 rounded-lg shadow-xl text-white font-bold flex items-center transform transition-all duration-300 ${c === 'red' ? 'bg-red-600' : 'bg-emerald-600'}`;
+            tm.innerText = m;
+            t.classList.remove('hidden', 'toast-enter');
+            t.classList.add('toast-enter-active');
+            setTimeout(() => { t.classList.add('hidden'); }, 4000);
+        }
+        window.mostrarError = function(h) {
+            document.getElementById('alertas').innerHTML = `<div class="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6">${h}</div>`;
+        }
+    </script>
+</body>
 </html>
