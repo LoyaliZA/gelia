@@ -113,7 +113,7 @@
                         <label class="block text-sm font-bold text-white mb-2">2. Selecciona Columnas (En orden):</label>
                         <p class="text-xs text-gray-500 mb-2">Haz clic para añadir/quitar. El número indica el orden.</p>
                         <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
-                            @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'CostoCalculado', 'CostoWizerp'] as $campo)
+                            @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'Costo (L.Resurtido)', 'Costos (L. Costos)'] as $campo)
                                 <label class="relative flex items-center space-x-2 bg-dark-900 p-2 rounded border border-dark-700 cursor-pointer hover:bg-dark-700 transition select-none">
                                     <input type="checkbox" value="{{ $campo }}" onchange="actualizarOrdenCreacion(this)" class="w-4 h-4 rounded bg-dark-800 border-dark-600">
                                     <span class="text-xs text-gray-300">{{ $campo }}</span>
