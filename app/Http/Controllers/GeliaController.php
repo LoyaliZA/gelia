@@ -57,7 +57,7 @@ class GeliaController extends Controller
                 });
             });
 
-            return (new FastExcel(collect($listaClientes)))->download("CLIENTES-LIMPIOS-$fecha.xlsx");
+            return (new FastExcel(collect($listaClientes)))->download("LISTA-CLIENTES-$fecha.xlsx");
         }
 
 
