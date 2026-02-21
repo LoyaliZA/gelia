@@ -164,7 +164,7 @@
             
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                 
-                <div class="bg-dark-800 border border-dark-700 rounded-xl p-5 hover:border-blue-500/50 transition">
+                <div class="drop-zone bg-dark-800 border-2 border-dark-700 rounded-xl p-5 hover:border-blue-500/50 transition-all duration-200" id="card-existencias">
                     <div class="flex items-center justify-between mb-1">
                         <h3 class="font-bold text-md text-blue-400">1. Existencias *</h3>
                     </div>
@@ -184,7 +184,7 @@
                     <input type="file" id="file-existencias" name="existencias" onchange="verificarArchivos()" class="block w-full text-xs text-gray-400 file:bg-blue-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-blue-500 cursor-pointer">
                 </div>
 
-                <div class="bg-dark-800 border border-dark-700 rounded-xl p-5 hover:border-emerald-500/50 transition">
+                <div class="drop-zone bg-dark-800 border-2 border-dark-700 rounded-xl p-5 hover:border-emerald-500/50 transition-all duration-200" id="card-precios">
                     <div class="flex items-center justify-between mb-1">
                         <h3 class="font-bold text-md text-emerald-400">2. Precios</h3>
                     </div>
@@ -204,7 +204,7 @@
                     <input type="file" id="file-precios" name="precios" onchange="verificarArchivos()" class="block w-full text-xs text-gray-400 file:bg-emerald-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-emerald-500 cursor-pointer">
                 </div>
 
-                <div class="bg-dark-800 border border-dark-700 rounded-xl p-5 hover:border-purple-500/50 transition">
+                <div class="drop-zone bg-dark-800 border-2 border-dark-700 rounded-xl p-5 hover:border-purple-500/50 transition-all duration-200" id="card-costos">
                     <div class="flex items-center justify-between mb-1">
                         <h3 class="font-bold text-md text-purple-400">3. Costos</h3>
                     </div>
@@ -217,14 +217,14 @@
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
                             <span class="text-purple-400 font-bold">Ruta:</span> Almacenes > Costos<br>
-                            <span class="text-purple-400 font-bold">Operaciones:</span> Seleccionar Opción Excel<br>
+                            <span class="text-purple-400 font-bold">Operaciones:</span> Seleccionar Opcion Excel<br>
                             <span class="text-purple-400 font-bold">Opciones:</span> Guardar en CSV.
                         </div>
                     </details>
                     <input type="file" id="file-costos" name="costos" onchange="verificarArchivos()" class="block w-full text-xs text-gray-400 file:bg-purple-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-purple-500 cursor-pointer">
                 </div>
 
-                 <div class="bg-dark-800 border border-yellow-700/50 rounded-xl p-5 hover:border-yellow-500 transition relative overflow-hidden">
+                 <div class="drop-zone bg-dark-800 border-2 border-yellow-700/50 rounded-xl p-5 hover:border-yellow-500 transition-all duration-200 relative overflow-hidden" id="card-clientes">
                     <div class="flex items-center justify-between mb-1">
                         <h3 class="font-bold text-md text-yellow-400">4. Clientes CSV</h3>
                     </div>
@@ -362,7 +362,6 @@
     </div>
 
     <script>
-        // Configuracion inyectada desde Laravel (Sintaxis segura)
         window.GeliaConfig = {
             routes: {
                 generar: "{{ route('gelia.generar') }}",
@@ -371,8 +370,6 @@
             },
             customLists: {!! json_encode($listasPersonalizadas ?? []) !!}
         };
-
-        /* --- LOGICA JS INTEGRADA --- */
 
         if (typeof tailwind !== 'undefined') {
             tailwind.config = {
@@ -389,18 +386,15 @@
             console.warn("Tailwind CSS bloqueado. Funcionalidad JS intacta.");
         }
 
-        // Variables Globales
         let ordenSeleccionado = [];
         let ordenCreacion = [];
 
-        // Mapa de dependencias
         const camposPorArchivo = {
             'existencias': ['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'],
             'precios':     ['PG', 'Plataformas', 'Lista3', 'Lista4', 'CostoCalculado'],
             'costos':      ['CostoWizerp']
         };
 
-        // Inicio
         document.addEventListener('DOMContentLoaded', () => {
             verificarArchivos();
             
@@ -408,9 +402,39 @@
             if(formCrear) {
                 formCrear.addEventListener('submit', guardarNuevaLista);
             }
-        });
 
-        // --- FUNCIONES GLOBALES (Window) ---
+            // --- Logica de Drag and Drop ---
+            const dropZones = document.querySelectorAll('.drop-zone');
+            dropZones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('border-dashed', 'bg-dark-700', 'scale-[1.02]');
+                    
+                    if(zone.id === 'card-existencias') zone.classList.add('border-blue-500');
+                    if(zone.id === 'card-precios') zone.classList.add('border-emerald-500');
+                    if(zone.id === 'card-costos') zone.classList.add('border-purple-500');
+                    if(zone.id === 'card-clientes') zone.classList.add('border-yellow-500');
+                });
+
+                zone.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('border-dashed', 'bg-dark-700', 'scale-[1.02]', 'border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-yellow-500');
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('border-dashed', 'bg-dark-700', 'scale-[1.02]', 'border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-yellow-500');
+                    
+                    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        const input = zone.querySelector('input[type="file"]');
+                        if (input) {
+                            input.files = e.dataTransfer.files;
+                            verificarArchivos(); 
+                        }
+                    }
+                });
+            });
+        });
         
         window.toggleModal = function(show) {
             const modal = document.getElementById('modal-nueva-lista');
