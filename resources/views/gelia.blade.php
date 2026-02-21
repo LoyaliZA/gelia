@@ -15,7 +15,7 @@
         ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #58a6ff; }
 
-        /* Scrollbar específico para el modal */
+        /* Scrollbar especifico para el modal */
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: #161b22; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
@@ -30,6 +30,11 @@
             pointer-events: none; 
             filter: grayscale(100%);
             border-color: #374151; 
+        }
+
+        /* Ocultar el triangulo por defecto de details en Safari/Chrome viejo */
+        details > summary::-webkit-details-marker {
+            display: none;
         }
     </style>
 </head>
@@ -48,7 +53,7 @@
     <div id="modal-nueva-lista" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="bg-dark-800 border border-dark-700 w-full max-w-4xl rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="p-6 border-b border-dark-700 flex justify-between items-center sticky top-0 bg-dark-800 z-10">
-                <h2 class="text-2xl font-bold text-white">✨ Nueva Lista Personalizada</h2>
+                <h2 class="text-2xl font-bold text-white">Nueva Lista Personalizada</h2>
                 <button onclick="toggleModal(false)" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
             
@@ -59,23 +64,23 @@
                         <input type="text" name="nombre_creador" required class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none" placeholder="Tu nombre">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Nombre de la Lista (Botón):</label>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Nombre de la Lista (Boton):</label>
                         <input type="text" name="titulo_lista" required class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none" placeholder="Ej: Lista Finanzas">
                     </div>
                      <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Color del Tema:</label>
                         <select name="color" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none">
-                            <option value="blue">Azul (Estándar)</option>
-                            <option value="emerald">Esmeralda (Éxito)</option>
-                            <option value="purple">Púrpura (Costos)</option>
+                            <option value="blue">Azul (Estandar)</option>
+                            <option value="emerald">Esmeralda (Exito)</option>
+                            <option value="purple">Purpura (Costos)</option>
                             <option value="orange">Naranja (Alerta)</option>
                             <option value="pink">Rosa</option>
                             <option value="red">Rojo</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-400 mb-1">Descripción:</label>
-                        <textarea name="descripcion" rows="2" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none" placeholder="¿Para qué sirve esta lista?"></textarea>
+                        <label class="block text-sm font-medium text-gray-400 mb-1">Descripcion:</label>
+                        <textarea name="descripcion" rows="2" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none" placeholder="Para que sirve esta lista?"></textarea>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Nombre Archivo Salida:</label>
@@ -85,7 +90,7 @@
                         </div>
                         <p class="text-[10px] text-orange-400 mt-2 font-bold flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                            EL NOMBRE DEBE IR SIEMPRE CON GUIONES (Ej: MI-LISTA) o el archivo tendrá un nombre erróneo.
+                            EL NOMBRE DEBE IR SIEMPRE CON GUIONES (Ej: MI-LISTA) o el archivo tendra un nombre erroneo.
                         </p>
                     </div>
                 </div>
@@ -111,7 +116,7 @@
 
                     <div>
                         <label class="block text-sm font-bold text-white mb-2">2. Selecciona Columnas (En orden):</label>
-                        <p class="text-xs text-gray-500 mb-2">Haz clic para añadir/quitar. El número indica el orden.</p>
+                        <p class="text-xs text-gray-500 mb-2">Haz clic para anadir/quitar. El numero indica el orden.</p>
                         <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
                             @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'Costo (L.Resurtido)', 'Costos (L. Costos)'] as $campo)
                                 <label class="relative flex items-center space-x-2 bg-dark-900 p-2 rounded border border-dark-700 cursor-pointer hover:bg-dark-700 transition select-none">
@@ -158,20 +163,84 @@
             </h2>
             
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+                
                 <div class="bg-dark-800 border border-dark-700 rounded-xl p-5 hover:border-blue-500/50 transition">
-                    <h3 class="font-bold text-md text-blue-400 mb-3">1. Existencias *</h3>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="font-bold text-md text-blue-400">1. Existencias *</h3>
+                    </div>
+                    <details class="mb-4 group">
+                        <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Ver instrucciones Wizerp
+                        </summary>
+                        <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
+                            <span class="text-blue-400 font-bold">Ruta:</span> Almacenes > Inventarios<br>
+                            <span class="text-blue-400 font-bold">Filtros:</span> Seleccionar almacen (CEDIS, TIENDA o REMATES), Existencia diferente o igual a 0<br>
+                            <span class="text-blue-400 font-bold">Opciones:</span> EXCEL > Exportar en CSV.
+                        </div>
+                    </details>
                     <input type="file" id="file-existencias" name="existencias" onchange="verificarArchivos()" class="block w-full text-xs text-gray-400 file:bg-blue-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-blue-500 cursor-pointer">
                 </div>
+
                 <div class="bg-dark-800 border border-dark-700 rounded-xl p-5 hover:border-emerald-500/50 transition">
-                    <h3 class="font-bold text-md text-emerald-400 mb-3">2. Precios</h3>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="font-bold text-md text-emerald-400">2. Precios</h3>
+                    </div>
+                    <details class="mb-4 group">
+                        <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Ver instrucciones Wizerp
+                        </summary>
+                        <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
+                            <span class="text-emerald-400 font-bold">Ruta:</span> Almacen > Productos<br>
+                            <span class="text-emerald-400 font-bold">Operaciones:</span> Exportar lista de precios<br>
+                            <span class="text-emerald-400 font-bold">Opciones:</span> Guardar en carpeta.
+                        </div>
+                    </details>
                     <input type="file" id="file-precios" name="precios" onchange="verificarArchivos()" class="block w-full text-xs text-gray-400 file:bg-emerald-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-emerald-500 cursor-pointer">
                 </div>
+
                 <div class="bg-dark-800 border border-dark-700 rounded-xl p-5 hover:border-purple-500/50 transition">
-                    <h3 class="font-bold text-md text-purple-400 mb-3">3. Costos</h3>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="font-bold text-md text-purple-400">3. Costos</h3>
+                    </div>
+                    <details class="mb-4 group">
+                        <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Ver instrucciones Wizerp
+                        </summary>
+                        <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
+                            <span class="text-purple-400 font-bold">Ruta:</span> Almacenes > Costos<br>
+                            <span class="text-purple-400 font-bold">Operaciones:</span> Seleccionar Opción Excel<br>
+                            <span class="text-purple-400 font-bold">Opciones:</span> Guardar en CSV.
+                        </div>
+                    </details>
                     <input type="file" id="file-costos" name="costos" onchange="verificarArchivos()" class="block w-full text-xs text-gray-400 file:bg-purple-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-purple-500 cursor-pointer">
                 </div>
+
                  <div class="bg-dark-800 border border-yellow-700/50 rounded-xl p-5 hover:border-yellow-500 transition relative overflow-hidden">
-                    <h3 class="font-bold text-md text-yellow-400 mb-3">4. Clientes CSV</h3>
+                    <div class="flex items-center justify-between mb-1">
+                        <h3 class="font-bold text-md text-yellow-400">4. Clientes CSV</h3>
+                    </div>
+                    <details class="mb-4 group">
+                        <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
+                            Ver instrucciones Wizerp
+                        </summary>
+                        <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
+                            <span class="text-yellow-400 font-bold">Ruta:</span> // <br>
+                            <span class="text-yellow-400 font-bold">Filtros:</span> //<br>
+                            <span class="text-yellow-400 font-bold">Opciones:</span> //.
+                        </div>
+                    </details>
                     <input type="file" id="file-clientes" name="clientes" class="block w-full text-xs text-gray-400 file:bg-yellow-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-yellow-500 cursor-pointer">
                 </div>
             </div>
@@ -185,19 +254,19 @@
                     <div class="grid grid-cols-2 gap-3 mb-6">
                         <button type="button" onclick="procesarSolicitud('resurtido')" class="p-4 bg-dark-800 border border-dark-700 hover:border-blue-500 hover:bg-dark-700 rounded-xl text-left group transition">
                             <span class="block text-blue-400 font-bold mb-1 group-hover:text-blue-300">Lista de Resurtido</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estándar: PG, Plataformas, Lista3</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: PG, Plataformas, Lista3</span>
                         </button>
                         <button type="button" onclick="procesarSolicitud('costos')" class="p-4 bg-dark-800 border border-dark-700 hover:border-purple-500 hover:bg-dark-700 rounded-xl text-left group transition">
                             <span class="block text-purple-400 font-bold mb-1 group-hover:text-purple-300">Lista de Costos</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estándar: Costos Wizerp</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: Costos Wizerp</span>
                         </button>
                         <button type="button" onclick="procesarSolicitud('actualizada')" class="p-4 bg-dark-800 border border-dark-700 hover:border-orange-500 hover:bg-dark-700 rounded-xl text-left group transition">
                             <span class="block text-orange-400 font-bold mb-1 group-hover:text-orange-300">Actualizada</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estándar: Costo Calc + Plataformas</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: Costo Calc + Plataformas</span>
                         </button>
                         <button type="button" onclick="procesarSolicitud('inventario')" class="p-4 bg-dark-800 border border-dark-700 hover:border-teal-500 hover:bg-dark-700 rounded-xl text-left group transition">
                             <span class="block text-teal-400 font-bold mb-1 group-hover:text-teal-300">Inventario Bellaroma</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estándar: PG + Lista3</span>
+                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: PG + Lista3</span>
                         </button>
                     </div>
 
@@ -254,7 +323,7 @@
             </div>
 
             <div class="border-t border-dark-700 pt-8">
-                <h2 class="text-lg font-bold text-gray-300 mb-4">🛠️ Genera una lista personalizada (Manual)</h2>
+                <h2 class="text-lg font-bold text-gray-300 mb-4">Genera una lista personalizada (Manual)</h2>
                 
                 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
                     @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'] as $campo)
@@ -293,7 +362,7 @@
     </div>
 
     <script>
-        // Configuración inyectada desde Laravel (Sintaxis segura)
+        // Configuracion inyectada desde Laravel (Sintaxis segura)
         window.GeliaConfig = {
             routes: {
                 generar: "{{ route('gelia.generar') }}",
@@ -303,9 +372,8 @@
             customLists: {!! json_encode($listasPersonalizadas ?? []) !!}
         };
 
-        /* --- LÓGICA JS INTEGRADA --- */
+        /* --- LOGICA JS INTEGRADA --- */
 
-        // 1. BLINDAJE DE TAILWIND (Evita que el script muera si se bloquea el CDN)
         if (typeof tailwind !== 'undefined') {
             tailwind.config = {
                 darkMode: 'class',
@@ -318,7 +386,7 @@
                 }
             }
         } else {
-            console.warn("⚠️ Tailwind CSS bloqueado. Funcionalidad JS intacta.");
+            console.warn("Tailwind CSS bloqueado. Funcionalidad JS intacta.");
         }
 
         // Variables Globales
@@ -379,7 +447,7 @@
             const form = e.target;
             const formData = new FormData(form);
 
-            mostrarCarga("Guardando configuración...");
+            mostrarCarga("Guardando configuracion...");
 
             try {
                 const response = await fetch(window.GeliaConfig.routes.guardar, {
@@ -396,12 +464,12 @@
                 if (!response.ok) {
                     if (data.errors) {
                         let msg = Object.values(data.errors).flat().join('\n');
-                        alert("Error de validación:\n" + msg);
+                        alert("Error de validacion:\n" + msg);
                     } else {
                         alert("Error: " + (data.message || "Error desconocido"));
                     }
                 } else {
-                    alert("✅ Lista guardada con éxito. La página se recargará.");
+                    alert("Lista guardada con exito. La pagina se recargara.");
                     window.location.reload();
                 }
 
@@ -466,7 +534,6 @@
         }
 
         window.procesarSolicitud = async function(tipo) {
-            // Validaciones básicas
             const fileExistencias = document.getElementById('file-existencias');
             const tieneExistencias = fileExistencias && fileExistencias.value !== "";
             const tienePrecios = document.getElementById('file-precios').value !== "";
@@ -475,13 +542,13 @@
             if (tipo === 'clientes') {
                 const fileClientes = document.getElementById('file-clientes').value;
                 if (!fileClientes) {
-                    mostrarToast("⚠️ Sube el archivo CSV de Clientes", "red");
+                    mostrarToast("Sube el archivo CSV de Clientes", "red");
                     return;
                 }
             } 
-            else if (!isNaN(tipo)) { // Es lista de BD
+            else if (!isNaN(tipo)) { 
                 if (!tieneExistencias) {
-                    mostrarToast("❌ Existencias es obligatorio.", "red");
+                    mostrarToast("Existencias es obligatorio.", "red");
                     return;
                 }
                 if (window.GeliaConfig && window.GeliaConfig.customLists) {
@@ -489,32 +556,31 @@
                     if (listaConfig) {
                         const reqs = listaConfig.archivos_requeridos || [];
                         if (reqs.includes('precios') && !tienePrecios) {
-                            mostrarToast(`⚠️ Requiere PRECIOS.`, "red");
+                            mostrarToast(`Requiere PRECIOS.`, "red");
                             return;
                         }
                         if (reqs.includes('costos') && !tieneCostos) {
-                            mostrarToast(`⚠️ Requiere COSTOS.`, "red");
+                            mostrarToast(`Requiere COSTOS.`, "red");
                             return;
                         }
                     }
                 }
             }
-            else { // Listas Hardcoded
+            else { 
                 if (!tieneExistencias) {
-                    mostrarToast("❌ Primero sube Existencias", "red");
+                    mostrarToast("Primero sube Existencias", "red");
                     return;
                 }
                 if ((tipo === 'resurtido' || tipo === 'actualizada' || tipo === 'inventario') && !tienePrecios) {
-                    mostrarToast("⚠️ Esta lista requiere: Existencias + Precios", "red");
+                    mostrarToast("Esta lista requiere: Existencias + Precios", "red");
                     return;
                 }
                 if (tipo === 'costos' && !tieneCostos) {
-                    mostrarToast("⚠️ Esta lista requiere: Existencias + Costos", "red");
+                    mostrarToast("Esta lista requiere: Existencias + Costos", "red");
                     return;
                 }
             }
 
-            // Configuración del envío
             let columnas = [];
             let nombreTipo = "";
 
@@ -540,7 +606,7 @@
                 columnas = ordenSeleccionado;
                 nombreTipo = "Lista Personalizada";
                 if (columnas.length === 0) {
-                    mostrarToast("❌ Error: Selecciona columnas.", "red");
+                    mostrarToast("Error: Selecciona columnas.", "red");
                     return;
                 }
             }
@@ -599,18 +665,18 @@
                 a.remove();
                 
                 ocultarCarga();
-                mostrarToast("✅ ¡Archivo Generado Exitosamente!", "green");
+                mostrarToast("Archivo Generado Exitosamente!", "green");
 
             } catch (error) {
                 console.error(error);
                 ocultarCarga();
-                mostrarToast("❌ Error: " + error.message, "red");
+                mostrarToast("Error: " + error.message, "red");
             }
         }
 
         window.eliminarLista = async function(event, id) {
             event.stopPropagation();
-            if (!confirm("¿Eliminar esta lista personalizada?")) return;
+            if (!confirm("Eliminar esta lista personalizada?")) return;
             mostrarCarga("Eliminando...");
             try {
                 const urlEliminar = window.GeliaConfig.routes.eliminar.replace(':id', id);
@@ -622,10 +688,10 @@
                     }
                 });
                 if (response.ok) {
-                    alert("🗑️ Eliminada.");
+                    alert("Eliminada.");
                     window.location.reload();
                 } else {
-                    alert("❌ Error al eliminar.");
+                    alert("Error al eliminar.");
                 }
             } catch (error) {
                 console.error(error);
@@ -635,7 +701,6 @@
             }
         }
 
-        // Utilidades
         window.mostrarCarga = function(m) {
             document.getElementById('overlay-carga').classList.remove('hidden');
             document.getElementById('texto-carga').innerText = m;
