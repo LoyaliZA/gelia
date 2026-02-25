@@ -18,6 +18,14 @@ class GeliaController extends Controller
         return view('gelia', compact('listasPersonalizadas')); // Pasamos las listas a la vista para que se muestren en el select de la vista gelia.blade.php
     }
 
+    // Muestra la vista principal cargando las listas guardadas
+    public function testIndex()
+    {
+        // Obtenemos solo las listas activas
+        $listasPersonalizadas = CustomList::where('active', true)->get();
+        return view('gelia-test', compact('listasPersonalizadas')); // Pasamos las listas a la vista para que se muestren en el select de la vista gelia.blade.php
+    }
+
     // Guarda una nueva configuración de lista
     public function guardarLista(Request $request)
     {
