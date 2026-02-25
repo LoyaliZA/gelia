@@ -12,3 +12,6 @@ Route::post('/generar', [GeliaController::class, 'generar'])->name('gelia.genera
 
 // 3. NUEVA: Ruta para eliminar (Soft Delete)
 Route::delete('/eliminar-lista/{id}', [GeliaController::class, 'eliminarLista'])->name('gelia.eliminar');
+
+// 4. NUEVA: Ruta para restaurar (Soft Restore)
+Route::post('/actualizar-lista/{id}', [GeliaController::class, 'actualizarLista'])->name('gelia.actualizar');

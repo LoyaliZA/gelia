@@ -1,11 +1,12 @@
 <?php
-
+//El namespace es la dirección del controlador y donde esta alojado, le dice a laraval exactamende donde se encuentra 
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Rap2hpoutre\FastExcel\FastExcel;
 use Illuminate\Support\Facades\Validator;
-use App\Models\CustomList; // Asegúrate de importar el modelo
+use Illuminate\Support\Facades\Log; // <-- IMPORTAMOS LOGS PARA LA BITÁCORA
+use App\Models\CustomList; // Se importa el modelo para interactuar con la tabla de listas personalizadas
 
 class GeliaController extends Controller
 {
@@ -14,7 +15,7 @@ class GeliaController extends Controller
     {
         // Obtenemos solo las listas activas
         $listasPersonalizadas = CustomList::where('active', true)->get();
-        return view('gelia', compact('listasPersonalizadas'));
+        return view('gelia', compact('listasPersonalizadas')); // Pasamos las listas a la vista para que se muestren en el select de la vista gelia.blade.php
     }
 
     // Guarda una nueva configuración de lista
@@ -36,8 +37,11 @@ class GeliaController extends Controller
 
         // Convertimos la cadena de columnas a array para guardarlo como JSON
         $columnasArray = explode(',', $request->columnas_exportar);
+        
+        // Atrapamos si el checkbox de "solo existencia" viene marcado
+        $soloConExistencia = $request->boolean('solo_con_existencia');
 
-        CustomList::create([
+        $lista = CustomList::create([
             'nombre_creador' => $request->nombre_creador,
             'titulo_lista' => $request->titulo_lista,
             'descripcion' => $request->descripcion,
@@ -45,16 +49,74 @@ class GeliaController extends Controller
             'archivos_requeridos' => $request->archivos_requeridos,
             'columnas_exportar' => $columnasArray,
             'nombre_archivo_salida' => strtoupper($request->nombre_archivo_salida),
+            'solo_con_existencia' => $soloConExistencia,
             'active' => true
         ]);
 
+        // LOG: Guardamos el registro de creación tras bambalinas
+        Log::info("GELIA - Nueva lista creada: '{$lista->titulo_lista}' por {$lista->nombre_creador}.");
+
         return response()->json(['message' => 'Lista creada con éxito']);
+    }
+
+    // NUEVO MÉTODO: Actualiza una lista existente
+    public function actualizarLista(Request $request, $id)
+    {
+        $lista = CustomList::find($id);
+
+        if (!$lista) {
+            return response()->json(['error' => 'Lista no encontrada'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'nombre_creador' => 'required|string|max:100',
+            'titulo_lista' => 'required|string|max:50',
+            'descripcion' => 'nullable|string',
+            'color' => 'required|string',
+            'archivos_requeridos' => 'required|array',
+            'columnas_exportar' => 'required|string',
+            'nombre_archivo_salida' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $columnasArray = explode(',', $request->columnas_exportar);
+        $soloConExistencia = $request->boolean('solo_con_existencia');
+
+        $lista->update([
+            'nombre_creador' => $request->nombre_creador,
+            'titulo_lista' => $request->titulo_lista,
+            'descripcion' => $request->descripcion,
+            'color' => $request->color,
+            'archivos_requeridos' => $request->archivos_requeridos,
+            'columnas_exportar' => $columnasArray,
+            'nombre_archivo_salida' => strtoupper($request->nombre_archivo_salida),
+            'solo_con_existencia' => $soloConExistencia,
+        ]);
+
+        // LOG: Guardamos el registro de edición tras bambalinas
+        Log::info("GELIA - Lista editada: '{$lista->titulo_lista}' por {$lista->nombre_creador}.");
+
+        return response()->json(['message' => 'Lista actualizada con éxito']);
     }
 
     public function generar(Request $request)
     {
         set_time_limit(0);
         ini_set('memory_limit', '-1');
+
+        // =========================================================
+        // PANEL DE VARIABLES GLOBALES (Fórmulas)
+        // Modifica estos valores si cambian los porcentajes en el futuro
+        // =========================================================
+        $divisorCostoCalculado = 1.3827;
+        $multiplicadorPlataformas = 0.77;
+        $multiplicadorLista3 = 0.8572;
+        $multiplicadorLista4 = 0.8229;
+        $multiplicadorBoutique = 0.75; // <-- NUEVA VARIABLE PARA BOUTIQUE
+        // =========================================================
 
         $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA'); 
         $fecha = date('d-m-y');
@@ -63,7 +125,6 @@ class GeliaController extends Controller
         // MODO 1: LIMPIEZA DE CLIENTES
         // ---------------------------------------------------------
         if ($tipoLista === 'clientes') {
-            // (Lógica existente de clientes sin cambios...)
             $validator = Validator::make($request->all(), ['clientes' => 'required|file']);
             if ($validator->fails()) return response()->json(['errors' => $validator->errors()], 422);
 
@@ -86,7 +147,6 @@ class GeliaController extends Controller
         // ---------------------------------------------------------
 
         // 1. DETECCIÓN DE CONFIGURACIÓN
-        // Si $tipoLista es un número, buscamos en la BD
         $esListaPersonalizadaBD = is_numeric($tipoLista);
         $configuracionBD = null;
 
@@ -94,14 +154,10 @@ class GeliaController extends Controller
             $configuracionBD = CustomList::find($tipoLista);
             if (!$configuracionBD) return response()->json(['error' => 'Lista no encontrada'], 404);
             
-            // Usamos el nombre configurado
             $nombreArchivo = $configuracionBD->nombre_archivo_salida . "-$fecha.xlsx";
-            
-            // Usamos las columnas configuradas
             $columnasSeleccionadas = $configuracionBD->columnas_exportar;
 
         } else {
-            // Lógica Legacy (Hardcoded)
             $ordenCadena = $request->input('orden_final'); 
             
             switch ($tipoLista) {
@@ -122,17 +178,14 @@ class GeliaController extends Controller
         }
 
         // 2. VALIDACIÓN DE ARCHIVOS
-        // Validamos existencias siempre
         $rules = ['existencias' => 'required|file'];
         $messages = [];
 
-        // Si es personalizada BD, validamos estrictamente lo que pide la lista
         if ($esListaPersonalizadaBD) {
-            $reqs = $configuracionBD->archivos_requeridos; // ej: ['existencias', 'precios']
+            $reqs = $configuracionBD->archivos_requeridos;
             if (in_array('precios', $reqs)) $rules['precios'] = 'required|file';
             if (in_array('costos', $reqs)) $rules['costos'] = 'required|file';
         } else {
-            // Validación Legacy flexible
             $rules['precios'] = 'nullable|file|required_without:costos';
             $rules['costos'] = 'nullable|file|required_without:precios';
             $messages['precios.required_without'] = 'Debes subir Precios o Costos.';
@@ -173,7 +226,7 @@ class GeliaController extends Controller
 
         // 5. PROCESAR EXISTENCIAS
         $listaCompleta = []; 
-        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas) {
+        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique) {
             $reader = (new FastExcel)->withoutHeaders()->import($ruta);
             foreach ($reader as $linea) {
                 if (!isset($linea[4]) || $linea[4] == 'Código') continue;
@@ -181,20 +234,31 @@ class GeliaController extends Controller
                 if ($skuCrudo === '') continue; 
                 $skuBuscador = ltrim($skuCrudo, '0');
 
+                $existenciaRaw = $linea[10] ?? 0;
+                $existencia = is_numeric($existenciaRaw) ? (int)$existenciaRaw : 0;
+
+                // --- NUEVO: FILTRO SOLO CON EXISTENCIA ---
+                if ($esListaPersonalizadaBD && $configuracionBD->solo_con_existencia) {
+                    if ($existencia <= 0) {
+                        continue; // Si tiene 0 existencias o menos, nos saltamos este producto
+                    }
+                }
+                // -----------------------------------------
+
                 $almacen = $linea[1] ?? '';
                 $folio = $linea[3] ?? '';
                 $descripcion = $linea[5] ?? '';
                 $marca = $linea[6] ?? '';
-                $existenciaRaw = $linea[10] ?? 0;
-                $existencia = is_numeric($existenciaRaw) ? (int)$existenciaRaw : 0;
-
+                
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
                 $costoWizerp = $diccionarioCostosWizerp[$skuBuscador] ?? 0.0;
 
-                $costoCalculado = $pg > 0 ? $pg / 1.3827 : 0.0;
-                $plataformas = $pg * 0.77;
-                $lista3 = $pg * 0.8572;
-                $lista4 = $pg * 0.8229;
+                // Fórmulas aplicadas usando las variables globales
+                $costoCalculado = $pg > 0 ? $pg / $divisorCostoCalculado : 0.0;
+                $plataformas = $pg * $multiplicadorPlataformas;
+                $lista3 = $pg * $multiplicadorLista3;
+                $lista4 = $pg * $multiplicadorLista4;
+                $listaBoutique = $pg * $multiplicadorBoutique; // <-- CÁLCULO LISTA BOUTIQUE
 
                 $fila = [];
                 foreach ($columnasSeleccionadas as $columna) {
@@ -206,6 +270,7 @@ class GeliaController extends Controller
                         case 'PG': $fila['PG'] = round($pg, 2); break;
                         case 'Lista3': $fila['Lista3'] = round($lista3, 2); break;
                         case 'Lista4': $fila['Lista4'] = round($lista4, 2); break;
+                        case 'ListaBoutique': $fila['Lista Boutique'] = round($listaBoutique, 2); break; // <-- MAPEO COLUMNA BOUTIQUE
                         case 'Plataformas': $fila['Plataformas'] = round($plataformas, 2); break;
                         case 'CostoWizerp': $fila['Costo (Wizerp)'] = round($costoWizerp, 2); break;
                         case 'CostoCalculado': $fila['Costo (Calculado)'] = round($costoCalculado, 2); break;
@@ -242,21 +307,18 @@ class GeliaController extends Controller
 
     public function eliminarLista($id)
     {
-        // Buscamos la lista por ID
         $lista = CustomList::find($id);
 
         if ($lista) {
-            // Opción A: Borrado Lógico (Recomendado) -> La oculta
             $lista->active = false;
             $lista->save();
 
-            // Opción B: Borrado Total (Si prefieres destruir el registro usa: $lista->delete();)
+            // LOG: Guardamos el registro de eliminación tras bambalinas
+            Log::info("GELIA - Lista eliminada (Ocultada): '{$lista->titulo_lista}'.");
 
             return response()->json(['message' => 'Lista eliminada correctamente.']);
         }
 
         return response()->json(['error' => 'Lista no encontrada.'], 404);
     }
-
-    
 }

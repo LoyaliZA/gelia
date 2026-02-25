@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>G.E.L.I.A. v2.2 | Sistema de Listas</title>
+    <title>G.E.L.I.A. v2.3 | Sistema de Listas</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -53,11 +53,13 @@
     <div id="modal-nueva-lista" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
         <div class="bg-dark-800 border border-dark-700 w-full max-w-4xl rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
             <div class="p-6 border-b border-dark-700 flex justify-between items-center sticky top-0 bg-dark-800 z-10">
-                <h2 class="text-2xl font-bold text-white">Nueva Lista Personalizada</h2>
+                <h2 id="modal-title" class="text-2xl font-bold text-white">Nueva Lista Personalizada</h2>
                 <button onclick="toggleModal(false)" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
             
             <form id="form-crear-lista" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <input type="hidden" id="lista-id" name="lista_id" value="">
+
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Creado por:</label>
@@ -114,14 +116,29 @@
                         </div>
                     </div>
 
+                    <div class="bg-dark-900 p-3 rounded border border-orange-900/50">
+                        <label class="flex items-center space-x-2 cursor-pointer">
+                            <input type="checkbox" name="solo_con_existencia" id="check-solo-existencia" value="1" class="accent-orange-500 w-4 h-4 rounded bg-dark-800 border-dark-600">
+                            <span class="text-orange-400 font-bold text-sm">Solo exportar productos con existencia</span>
+                        </label>
+                        <p class="text-[10px] text-gray-500 mt-1 ml-6">Omite automáticamente del Excel todos los productos que tengan 0 en existencia.</p>
+                    </div>
+
                     <div>
                         <label class="block text-sm font-bold text-white mb-2">2. Selecciona Columnas (En orden):</label>
                         <p class="text-xs text-gray-500 mb-2">Haz clic para anadir/quitar. El numero indica el orden.</p>
                         <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
-                            @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'Costo (L.Resurtido)', 'Costos (L. Costos)'] as $campo)
+                            @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado', 'CostoWizerp'] as $campo)
+                                @php
+                                    // Nombres amigables para mostrar en la interfaz
+                                    $nombreMostrar = $campo;
+                                    if($campo == 'ListaBoutique') $nombreMostrar = 'Lista Boutique';
+                                    if($campo == 'CostoCalculado') $nombreMostrar = 'Costo (L.Resurtido)';
+                                    if($campo == 'CostoWizerp') $nombreMostrar = 'Costos (L. Costos)';
+                                @endphp
                                 <label class="relative flex items-center space-x-2 bg-dark-900 p-2 rounded border border-dark-700 cursor-pointer hover:bg-dark-700 transition select-none">
                                     <input type="checkbox" value="{{ $campo }}" onchange="actualizarOrdenCreacion(this)" class="w-4 h-4 rounded bg-dark-800 border-dark-600">
-                                    <span class="text-xs text-gray-300">{{ $campo }}</span>
+                                    <span class="text-xs text-gray-300">{{ $nombreMostrar }}</span>
                                     <span id="badge-creacion-{{ $campo }}" class="hidden absolute top-1 right-1 bg-blue-600 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full"></span>
                                 </label>
                             @endforeach
@@ -144,11 +161,11 @@
             <div>
                 <h1 class="text-4xl font-extrabold text-white tracking-tight">
                     <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">G.E.L.I.A.</span>
-                    <span class="text-lg text-gray-500 font-normal ml-2">v2.2</span>
+                    <span class="text-lg text-gray-500 font-normal ml-2">v2.3</span>
                 </h1>
                 <p class="text-gray-400 mt-1 text-sm font-medium">Sistema Generador de Listas Inteligentes y Automatizadas</p>
             </div>
-            <button onclick="toggleModal(true)" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 text-blue-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition">
+            <button onclick="abrirModalCrear()" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 text-blue-400 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-lg">
                 <span>+</span> Crear Nueva Lista
             </button>
         </header>
@@ -170,10 +187,8 @@
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                            Ver instrucciones Wizerp
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
                             <span class="text-blue-400 font-bold">Ruta:</span> Almacenes > Inventarios<br>
@@ -190,10 +205,8 @@
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                            Ver instrucciones Wizerp
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
                             <span class="text-emerald-400 font-bold">Ruta:</span> Almacen > Productos<br>
@@ -210,10 +223,8 @@
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                            Ver instrucciones Wizerp
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
                             <span class="text-purple-400 font-bold">Ruta:</span> Almacenes > Costos<br>
@@ -230,15 +241,11 @@
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                            </svg>
-                            Ver instrucciones Wizerp
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
-                            <span class="text-yellow-400 font-bold">Ruta:</span> // <br>
-                            <span class="text-yellow-400 font-bold">Filtros:</span> //<br>
-                            <span class="text-yellow-400 font-bold">Opciones:</span> //.
+                            Archivo CSV de Clientes para limpieza de base de datos.
                         </div>
                     </details>
                     <input type="file" id="file-clientes" name="clientes" class="block w-full text-xs text-gray-400 file:bg-yellow-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-yellow-500 cursor-pointer">
@@ -246,7 +253,6 @@
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
-                
                 <div>
                     <h2 class="text-xl font-bold text-white mb-4 flex items-center">
                         <span class="bg-emerald-600 w-2 h-6 rounded mr-2"></span> Listas Predeterminadas
@@ -269,39 +275,6 @@
                             <span class="block text-[10px] text-gray-500 uppercase">Estandar: PG + Lista3</span>
                         </button>
                     </div>
-
-                    @if(isset($listasPersonalizadas) && count($listasPersonalizadas) > 0)
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center border-t border-dark-700 pt-6">
-                        <span class="bg-purple-600 w-2 h-6 rounded mr-2"></span> Listas Personalizadas Guardadas
-                    </h2>
-                    <div class="grid grid-cols-2 gap-3">
-                        @foreach($listasPersonalizadas as $lista)
-                            @php
-                                $colors = [
-                                    'blue' => 'text-blue-400 hover:border-blue-500 group-hover:text-blue-300',
-                                    'emerald' => 'text-emerald-400 hover:border-emerald-500 group-hover:text-emerald-300',
-                                    'purple' => 'text-purple-400 hover:border-purple-500 group-hover:text-purple-300',
-                                    'orange' => 'text-orange-400 hover:border-orange-500 group-hover:text-orange-300',
-                                    'pink' => 'text-pink-400 hover:border-pink-500 group-hover:text-pink-300',
-                                    'red' => 'text-red-400 hover:border-red-500 group-hover:text-red-300',
-                                ];
-                                $claseColor = $colors[$lista->color] ?? $colors['blue'];
-                            @endphp
-
-                            <button type="button" onclick="procesarSolicitud('{{ $lista->id }}')" class="relative p-4 bg-dark-800 border border-dark-700 hover:bg-dark-700 rounded-xl text-left group transition pr-10 {{ $claseColor }}">
-                                <span class="block font-bold mb-1">{{ $lista->titulo_lista }}</span>
-                                <span class="block text-[10px] text-gray-500 mb-1">{{ Str::limit($lista->descripcion, 40) }}</span>
-                                <span class="block text-[9px] text-gray-600 italic">Por: {{ $lista->nombre_creador }}</span>
-
-                                <div onclick="eliminarLista(event, '{{ $lista->id }}')" class="absolute top-2 right-2 p-2 rounded-full hover:bg-red-900/50 text-gray-600 hover:text-red-500 transition cursor-pointer" title="Eliminar lista">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </div>
-                            </button>
-                        @endforeach
-                    </div>
-                    @endif
                 </div>
 
                 <div>
@@ -313,14 +286,59 @@
                             Genera una lista limpia de IDs y Nombres. Limpia y corrige el archivo CSV.
                         </p>
                         <button type="button" onclick="procesarSolicitud('clientes')" class="w-full py-3 bg-yellow-600/20 border border-yellow-600/50 text-yellow-400 hover:bg-yellow-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                              <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd" />
-                            </svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd" /></svg>
                             Procesar Lista Clientes
                         </button>
                     </div>
                 </div>
             </div>
+
+            @if(isset($listasPersonalizadas) && count($listasPersonalizadas) > 0)
+            <div class="mb-10">
+                <h2 class="text-xl font-bold text-white mb-4 flex items-center border-t border-dark-700 pt-6">
+                    <span class="bg-purple-600 w-2 h-6 rounded mr-2"></span> Listas Personalizadas Guardadas
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    @foreach($listasPersonalizadas as $lista)
+                        @php
+                            $colors = [
+                                'blue' => 'text-blue-400 hover:border-blue-500 group-hover:text-blue-300',
+                                'emerald' => 'text-emerald-400 hover:border-emerald-500 group-hover:text-emerald-300',
+                                'purple' => 'text-purple-400 hover:border-purple-500 group-hover:text-purple-300',
+                                'orange' => 'text-orange-400 hover:border-orange-500 group-hover:text-orange-300',
+                                'pink' => 'text-pink-400 hover:border-pink-500 group-hover:text-pink-300',
+                                'red' => 'text-red-400 hover:border-red-500 group-hover:text-red-300',
+                            ];
+                            $claseColor = $colors[$lista->color] ?? $colors['blue'];
+                        @endphp
+
+                        <button type="button" onclick="procesarSolicitud('{{ $lista->id }}')" class="relative p-4 bg-dark-800 border border-dark-700 hover:bg-dark-700 rounded-xl text-left group transition pr-16 {{ $claseColor }} h-full flex flex-col justify-between">
+                            
+                            <div>
+                                <span class="block font-bold mb-1 text-lg">{{ $lista->titulo_lista }}</span>
+                                <span class="block text-[11px] text-gray-500 mb-1 leading-tight">{{ Str::limit($lista->descripcion, 55) }}</span>
+                                <span class="block text-[10px] text-gray-600 italic mt-2">Por: {{ $lista->nombre_creador }}</span>
+                            </div>
+
+                            <div onclick="abrirModalEdicion(event, '{{ $lista->id }}')" class="absolute top-2 right-10 p-2 rounded-full hover:bg-blue-900/50 text-gray-600 hover:text-blue-500 transition cursor-pointer" title="Editar lista">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                            </div>
+
+                            <div onclick="eliminarLista(event, '{{ $lista->id }}')" class="absolute top-2 right-2 p-2 rounded-full hover:bg-red-900/50 text-gray-600 hover:text-red-500 transition cursor-pointer" title="Eliminar lista">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </div>
+
+                            @if($lista->solo_con_existencia)
+                                <span class="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                                    Solo c/ Existencia
+                                </span>
+                            @endif
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+            @endif
 
             <div class="border-t border-dark-700 pt-8">
                 <h2 class="text-lg font-bold text-gray-300 mb-4">Genera una lista personalizada (Manual)</h2>
@@ -334,17 +352,18 @@
                         </label>
                     @endforeach
 
-                    @foreach(['PG', 'Plataformas', 'Lista3', 'Lista4'] as $campo)
+                    @foreach(['PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique'] as $campo)
+                        @php $nombreMostrar = $campo == 'ListaBoutique' ? 'Lista Boutique' : $campo; @endphp
                         <label id="label-{{ $campo }}" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                             <input type="checkbox" id="check-{{ $campo }}" value="{{ $campo }}" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                            <span class="text-sm font-medium text-gray-300">{{ $campo }}</span>
+                            <span class="text-sm font-medium text-gray-300">{{ $nombreMostrar }}</span>
                             <span id="badge-{{ $campo }}" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
                         </label>
                     @endforeach
 
                      <label id="label-CostoCalculado" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                         <input type="checkbox" id="check-CostoCalculado" value="CostoCalculado" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                        <span class="text-sm font-medium text-gray-300">Costo (L.resurtido)</span>
+                        <span class="text-sm font-medium text-gray-300">Costo (L.Resurtido)</span>
                         <span id="badge-CostoCalculado" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
                     </label>
 
@@ -366,24 +385,14 @@
             routes: {
                 generar: "{{ route('gelia.generar') }}",
                 guardar: "{{ route('gelia.guardar') }}",
+                actualizar: "{{ route('gelia.actualizar', ['id' => ':id']) }}", // NUEVA RUTA
                 eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}"
             },
             customLists: {!! json_encode($listasPersonalizadas ?? []) !!}
         };
 
         if (typeof tailwind !== 'undefined') {
-            tailwind.config = {
-                darkMode: 'class',
-                theme: {
-                    extend: {
-                        colors: {
-                            dark: { 900: '#0d1117', 800: '#161b22', 700: '#21262d', text: '#c9d1d9' }
-                        }
-                    }
-                }
-            }
-        } else {
-            console.warn("Tailwind CSS bloqueado. Funcionalidad JS intacta.");
+            tailwind.config = { darkMode: 'class', theme: { extend: { colors: { dark: { 900: '#0d1117', 800: '#161b22', 700: '#21262d', text: '#c9d1d9' } } } } }
         }
 
         let ordenSeleccionado = [];
@@ -391,40 +400,33 @@
 
         const camposPorArchivo = {
             'existencias': ['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'],
-            'precios':     ['PG', 'Plataformas', 'Lista3', 'Lista4', 'CostoCalculado'],
+            'precios':     ['PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado'],
             'costos':      ['CostoWizerp']
         };
 
         document.addEventListener('DOMContentLoaded', () => {
             verificarArchivos();
-            
             const formCrear = document.getElementById('form-crear-lista');
-            if(formCrear) {
-                formCrear.addEventListener('submit', guardarNuevaLista);
-            }
+            if(formCrear) formCrear.addEventListener('submit', guardarNuevaLista);
 
-            // --- Logica de Drag and Drop ---
+            // Drag and Drop
             const dropZones = document.querySelectorAll('.drop-zone');
             dropZones.forEach(zone => {
                 zone.addEventListener('dragover', (e) => {
                     e.preventDefault();
                     zone.classList.add('border-dashed', 'bg-dark-700', 'scale-[1.02]');
-                    
                     if(zone.id === 'card-existencias') zone.classList.add('border-blue-500');
                     if(zone.id === 'card-precios') zone.classList.add('border-emerald-500');
                     if(zone.id === 'card-costos') zone.classList.add('border-purple-500');
                     if(zone.id === 'card-clientes') zone.classList.add('border-yellow-500');
                 });
-
                 zone.addEventListener('dragleave', (e) => {
                     e.preventDefault();
                     zone.classList.remove('border-dashed', 'bg-dark-700', 'scale-[1.02]', 'border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-yellow-500');
                 });
-
                 zone.addEventListener('drop', (e) => {
                     e.preventDefault();
                     zone.classList.remove('border-dashed', 'bg-dark-700', 'scale-[1.02]', 'border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-yellow-500');
-                    
                     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                         const input = zone.querySelector('input[type="file"]');
                         if (input) {
@@ -442,10 +444,70 @@
             else modal.classList.add('hidden');
         }
 
+        // NUEVO: Funciones para abrir el modal limpio (Crear) o lleno (Editar)
+        window.abrirModalCrear = function() {
+            document.getElementById('form-crear-lista').reset();
+            document.getElementById('lista-id').value = '';
+            document.getElementById('modal-title').innerText = 'Nueva Lista Personalizada';
+            
+            // Limpiar badges de columnas
+            ordenCreacion = [];
+            document.querySelectorAll('[id^="badge-creacion-"]').forEach(b => b.classList.add('hidden'));
+            document.querySelectorAll('#form-crear-lista input[type="checkbox"]').forEach(c => {
+                if(c.name !== 'archivos_requeridos[]' || c.value !== 'existencias') c.checked = false;
+            });
+            document.getElementById('check-solo-existencia').checked = false;
+            document.getElementById('input-columnas-exportar').value = '';
+            toggleModal(true);
+        }
+
+        window.abrirModalEdicion = function(event, id) {
+            event.stopPropagation(); // Evita que se dispare el click de la tarjeta que genera la lista
+            
+            const lista = window.GeliaConfig.customLists.find(l => l.id == id);
+            if(!lista) return;
+
+            document.getElementById('form-crear-lista').reset();
+            document.getElementById('lista-id').value = lista.id;
+            document.getElementById('modal-title').innerText = 'Editar Lista: ' + lista.titulo_lista;
+
+            // Rellenar textos
+            document.querySelector('input[name="nombre_creador"]').value = lista.nombre_creador;
+            document.querySelector('input[name="titulo_lista"]').value = lista.titulo_lista;
+            document.querySelector('select[name="color"]').value = lista.color;
+            document.querySelector('textarea[name="descripcion"]').value = lista.descripcion || '';
+            document.querySelector('input[name="nombre_archivo_salida"]').value = lista.nombre_archivo_salida;
+
+            // Archivos requeridos
+            const reqs = lista.archivos_requeridos || [];
+            document.querySelector('input[name="archivos_requeridos[]"][value="precios"]').checked = reqs.includes('precios');
+            document.querySelector('input[name="archivos_requeridos[]"][value="costos"]').checked = reqs.includes('costos');
+
+            // Solo existencia
+            document.getElementById('check-solo-existencia').checked = lista.solo_con_existencia;
+
+            // Rellenar columnas en el orden correcto
+            ordenCreacion = [];
+            document.querySelectorAll('[id^="badge-creacion-"]').forEach(b => b.classList.add('hidden'));
+            document.querySelectorAll('#form-crear-lista input[type="checkbox"]').forEach(c => {
+                 if(c.id !== 'check-solo-existencia' && c.name !== 'archivos_requeridos[]') c.checked = false;
+            });
+
+            const colExportar = lista.columnas_exportar || [];
+            colExportar.forEach(col => {
+                const cb = document.querySelector(`input[value="${col}"][onchange="actualizarOrdenCreacion(this)"]`);
+                if(cb) {
+                    cb.checked = true;
+                    actualizarOrdenCreacion(cb);
+                }
+            });
+
+            toggleModal(true);
+        }
+
         window.actualizarOrdenCreacion = function(checkbox) {
             const valor = checkbox.value;
             const badge = document.getElementById('badge-creacion-' + valor);
-            
             if (checkbox.checked) {
                 ordenCreacion.push(valor);
                 badge.innerText = ordenCreacion.length;
@@ -462,19 +524,19 @@
 
         window.guardarNuevaLista = async function(e) {
             e.preventDefault();
-            
-            if (ordenCreacion.length === 0) {
-                alert("Debes seleccionar al menos una columna para exportar.");
-                return;
-            }
+            if (ordenCreacion.length === 0) { alert("Debes seleccionar al menos una columna para exportar."); return; }
 
             const form = e.target;
             const formData = new FormData(form);
+            const idLista = document.getElementById('lista-id').value;
+            
+            // Decidir si llamamos a "guardar" (crear) o "actualizar" (editar)
+            const url = idLista ? window.GeliaConfig.routes.actualizar.replace(':id', idLista) : window.GeliaConfig.routes.guardar;
 
-            mostrarCarga("Guardando configuracion...");
+            mostrarCarga(idLista ? "Actualizando configuración..." : "Guardando configuración...");
 
             try {
-                const response = await fetch(window.GeliaConfig.routes.guardar, {
+                const response = await fetch(url, {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -488,12 +550,12 @@
                 if (!response.ok) {
                     if (data.errors) {
                         let msg = Object.values(data.errors).flat().join('\n');
-                        alert("Error de validacion:\n" + msg);
+                        alert("Error de validación:\n" + msg);
                     } else {
                         alert("Error: " + (data.message || "Error desconocido"));
                     }
                 } else {
-                    alert("Lista guardada con exito. La pagina se recargara.");
+                    alert(idLista ? "Lista actualizada con éxito." : "Lista creada con éxito.");
                     window.location.reload();
                 }
 
@@ -508,7 +570,6 @@
         window.actualizarOrden = function(checkbox) {
             const valor = checkbox.value;
             const badge = document.getElementById('badge-' + valor);
-
             if (checkbox.checked) {
                 ordenSeleccionado.push(valor);
                 badge.innerText = ordenSeleccionado.length;
@@ -516,9 +577,7 @@
             } else {
                 ordenSeleccionado = ordenSeleccionado.filter(item => item !== valor);
                 badge.classList.add('hidden');
-                ordenSeleccionado.forEach((item, index) => {
-                    document.getElementById('badge-' + item).innerText = index + 1;
-                });
+                ordenSeleccionado.forEach((item, index) => { document.getElementById('badge-' + item).innerText = index + 1; });
             }
         }
 
@@ -537,7 +596,6 @@
                 campos.forEach(campo => {
                     const label = document.getElementById('label-' + campo);
                     const checkbox = document.getElementById('check-' + campo);
-
                     if (label && checkbox) {
                         if (estaSubido) {
                             label.classList.remove('disabled-option');
@@ -565,43 +623,26 @@
 
             if (tipo === 'clientes') {
                 const fileClientes = document.getElementById('file-clientes').value;
-                if (!fileClientes) {
-                    mostrarToast("Sube el archivo CSV de Clientes", "red");
-                    return;
-                }
+                if (!fileClientes) { mostrarToast("Sube el archivo CSV de Clientes", "red"); return; }
             } 
             else if (!isNaN(tipo)) { 
-                if (!tieneExistencias) {
-                    mostrarToast("Existencias es obligatorio.", "red");
-                    return;
-                }
+                if (!tieneExistencias) { mostrarToast("Existencias es obligatorio.", "red"); return; }
                 if (window.GeliaConfig && window.GeliaConfig.customLists) {
                     const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
                     if (listaConfig) {
                         const reqs = listaConfig.archivos_requeridos || [];
-                        if (reqs.includes('precios') && !tienePrecios) {
-                            mostrarToast(`Requiere PRECIOS.`, "red");
-                            return;
-                        }
-                        if (reqs.includes('costos') && !tieneCostos) {
-                            mostrarToast(`Requiere COSTOS.`, "red");
-                            return;
-                        }
+                        if (reqs.includes('precios') && !tienePrecios) { mostrarToast(`Requiere PRECIOS.`, "red"); return; }
+                        if (reqs.includes('costos') && !tieneCostos) { mostrarToast(`Requiere COSTOS.`, "red"); return; }
                     }
                 }
             }
             else { 
-                if (!tieneExistencias) {
-                    mostrarToast("Primero sube Existencias", "red");
-                    return;
-                }
+                if (!tieneExistencias) { mostrarToast("Primero sube Existencias", "red"); return; }
                 if ((tipo === 'resurtido' || tipo === 'actualizada' || tipo === 'inventario') && !tienePrecios) {
-                    mostrarToast("Esta lista requiere: Existencias + Precios", "red");
-                    return;
+                    mostrarToast("Esta lista requiere: Existencias + Precios", "red"); return;
                 }
                 if (tipo === 'costos' && !tieneCostos) {
-                    mostrarToast("Esta lista requiere: Existencias + Costos", "red");
-                    return;
+                    mostrarToast("Esta lista requiere: Existencias + Costos", "red"); return;
                 }
             }
 
@@ -612,35 +653,21 @@
                 const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
                 nombreTipo = listaConfig ? listaConfig.titulo_lista : "Lista Personalizada";
             } 
-            else if (tipo === 'clientes') {
-                nombreTipo = "Limpieza de Clientes";
-            } else if (tipo === 'resurtido') {
-                columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Lista3'];
-                nombreTipo = "Lista de Resurtido";
-            } else if (tipo === 'costos') {
-                columnas = ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp'];
-                nombreTipo = "Lista de Costos";
-            } else if (tipo === 'actualizada') {
-                columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas'];
-                nombreTipo = "Lista Actualizada";
-            } else if (tipo === 'inventario') {
-                columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Lista3'];
-                nombreTipo = "Lista de Inventario";
-            } else {
+            else if (tipo === 'clientes') { nombreTipo = "Limpieza de Clientes"; }
+            else if (tipo === 'resurtido') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Lista3']; nombreTipo = "Lista de Resurtido"; }
+            else if (tipo === 'costos') { columnas = ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp']; nombreTipo = "Lista de Costos"; }
+            else if (tipo === 'actualizada') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas']; nombreTipo = "Lista Actualizada"; }
+            else if (tipo === 'inventario') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Lista3']; nombreTipo = "Lista de Inventario"; }
+            else {
                 columnas = ordenSeleccionado;
                 nombreTipo = "Lista Personalizada";
-                if (columnas.length === 0) {
-                    mostrarToast("Error: Selecciona columnas.", "red");
-                    return;
-                }
+                if (columnas.length === 0) { mostrarToast("Error: Selecciona columnas.", "red"); return; }
             }
 
             const form = document.getElementById('form-principal');
             const formData = new FormData(form);
             
-            if (columnas.length > 0) {
-                formData.append('orden_final', columnas.join(','));
-            }
+            if (columnas.length > 0) formData.append('orden_final', columnas.join(','));
             formData.append('tipo_lista', tipo);
 
             mostrarCarga(`Generando: ${nombreTipo}...`);
@@ -651,10 +678,7 @@
                 const response = await fetch(urlGenerar, {
                     method: 'POST',
                     body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                        'Accept': 'application/json'
-                    }
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value, 'Accept': 'application/json' }
                 });
 
                 if (!response.ok) {
@@ -664,11 +688,8 @@
                         Object.values(data.errors).forEach(err => html += `<li>${err}</li>`);
                         html += `</ul>`;
                         mostrarError(html);
-                    } else {
-                        throw new Error(data.error || 'Error en el servidor');
-                    }
-                    ocultarCarga();
-                    return;
+                    } else { throw new Error(data.error || 'Error en el servidor'); }
+                    ocultarCarga(); return;
                 }
 
                 const blob = await response.blob();
@@ -706,44 +727,23 @@
                 const urlEliminar = window.GeliaConfig.routes.eliminar.replace(':id', id);
                 const response = await fetch(urlEliminar, {
                     method: 'DELETE',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                        'Accept': 'application/json'
-                    }
+                    headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value, 'Accept': 'application/json' }
                 });
-                if (response.ok) {
-                    alert("Eliminada.");
-                    window.location.reload();
-                } else {
-                    alert("Error al eliminar.");
-                }
-            } catch (error) {
-                console.error(error);
-                alert("Error de red.");
-            } finally {
-                ocultarCarga();
-            }
+                if (response.ok) { alert("Eliminada."); window.location.reload(); } else { alert("Error al eliminar."); }
+            } catch (error) { console.error(error); alert("Error de red."); } finally { ocultarCarga(); }
         }
 
-        window.mostrarCarga = function(m) {
-            document.getElementById('overlay-carga').classList.remove('hidden');
-            document.getElementById('texto-carga').innerText = m;
-        }
-        window.ocultarCarga = function() {
-            document.getElementById('overlay-carga').classList.add('hidden');
-        }
+        window.mostrarCarga = function(m) { document.getElementById('overlay-carga').classList.remove('hidden'); document.getElementById('texto-carga').innerText = m; }
+        window.ocultarCarga = function() { document.getElementById('overlay-carga').classList.add('hidden'); }
         window.mostrarToast = function(m, c) {
             const t = document.getElementById('toast');
             const tm = document.getElementById('toast-msg');
             t.className = `fixed top-5 right-5 z-50 px-6 py-4 rounded-lg shadow-xl text-white font-bold flex items-center transform transition-all duration-300 ${c === 'red' ? 'bg-red-600' : 'bg-emerald-600'}`;
             tm.innerText = m;
-            t.classList.remove('hidden', 'toast-enter');
-            t.classList.add('toast-enter-active');
+            t.classList.remove('hidden', 'toast-enter'); t.classList.add('toast-enter-active');
             setTimeout(() => { t.classList.add('hidden'); }, 4000);
         }
-        window.mostrarError = function(h) {
-            document.getElementById('alertas').innerHTML = `<div class="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6">${h}</div>`;
-        }
+        window.mostrarError = function(h) { document.getElementById('alertas').innerHTML = `<div class="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6">${h}</div>`; }
     </script>
 </body>
 </html>

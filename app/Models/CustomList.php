@@ -17,7 +17,8 @@ class CustomList extends Model
         'archivos_requeridos',
         'columnas_exportar',
         'nombre_archivo_salida',
-        'active'
+        'active',
+        'solo_con_existencia', // Nueva columna para filtrar solo productos con existencia
     ];
 
     // Esto hace la magia: convierte el JSON de la BD a Array de PHP automáticamente
@@ -25,5 +26,6 @@ class CustomList extends Model
         'archivos_requeridos' => 'array',
         'columnas_exportar' => 'array',
         'active' => 'boolean',
+        'solo_con_existencia' => 'boolean', // Asegura que esta columna también se trate como booleano
     ];
 }
