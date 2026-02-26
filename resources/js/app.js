@@ -5,14 +5,14 @@ let ordenCreacion = [];
 
 const camposPorArchivo = {
     'existencias': ['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'],
-    'precios':     ['PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado'],
-    'costos':      ['CostoWizerp']
+    'precios': ['PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado'],
+    'costos': ['CostoWizerp']
 };
 
 document.addEventListener('DOMContentLoaded', () => {
     verificarArchivos();
     const formCrear = document.getElementById('form-crear-lista');
-    if(formCrear) formCrear.addEventListener('submit', guardarNuevaLista);
+    if (formCrear) formCrear.addEventListener('submit', guardarNuevaLista);
 
     // Drag and Drop
     const dropZones = document.querySelectorAll('.drop-zone');
@@ -20,10 +20,11 @@ document.addEventListener('DOMContentLoaded', () => {
         zone.addEventListener('dragover', (e) => {
             e.preventDefault();
             zone.classList.add('border-dashed', 'bg-dark-700', 'scale-[1.02]');
-            if(zone.id === 'card-existencias') zone.classList.add('border-blue-500');
-            if(zone.id === 'card-precios') zone.classList.add('border-emerald-500');
-            if(zone.id === 'card-costos') zone.classList.add('border-purple-500');
-            if(zone.id === 'card-clientes') zone.classList.add('border-yellow-500');
+            if (zone.id === 'card-existencias') zone.classList.add('border-blue-700');
+            if (zone.id === 'card-precios') zone.classList.add('border-emerald-500');
+            if (zone.id === 'card-costos') zone.classList.add('border-purple-500');
+            if (zone.id === 'card-clientes') zone.classList.add('border-yellow-500');
+            if (zone.id === 'card-gastos') zone.classList.add('border-green-500');
         });
         zone.addEventListener('dragleave', (e) => {
             e.preventDefault();
@@ -36,38 +37,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 const input = zone.querySelector('input[type="file"]');
                 if (input) {
                     input.files = e.dataTransfer.files;
-                    verificarArchivos(); 
+                    verificarArchivos();
                 }
             }
         });
     });
 });
 
-window.toggleModal = function(show) {
+window.toggleModal = function (show) {
     const modal = document.getElementById('modal-nueva-lista');
     if (show) modal.classList.remove('hidden');
     else modal.classList.add('hidden');
 }
 
-window.abrirModalCrear = function() {
+window.abrirModalCrear = function () {
     document.getElementById('form-crear-lista').reset();
     document.getElementById('lista-id').value = '';
     document.getElementById('modal-title').innerText = 'Nueva Lista Personalizada';
-    
+
     ordenCreacion = [];
     document.querySelectorAll('[id^="badge-creacion-"]').forEach(b => b.classList.add('hidden'));
     document.querySelectorAll('#form-crear-lista input[type="checkbox"]').forEach(c => {
-        if(c.name !== 'archivos_requeridos[]' || c.value !== 'existencias') c.checked = false;
+        if (c.name !== 'archivos_requeridos[]' || c.value !== 'existencias') c.checked = false;
     });
     document.getElementById('check-solo-existencia').checked = false;
     document.getElementById('input-columnas-exportar').value = '';
     toggleModal(true);
 }
 
-window.abrirModalEdicion = function(event, id) {
+window.abrirModalEdicion = function (event, id) {
     event.stopPropagation();
     const lista = window.GeliaConfig.customLists.find(l => l.id == id);
-    if(!lista) return;
+    if (!lista) return;
 
     document.getElementById('form-crear-lista').reset();
     document.getElementById('lista-id').value = lista.id;
@@ -88,13 +89,13 @@ window.abrirModalEdicion = function(event, id) {
     ordenCreacion = [];
     document.querySelectorAll('[id^="badge-creacion-"]').forEach(b => b.classList.add('hidden'));
     document.querySelectorAll('#form-crear-lista input[type="checkbox"]').forEach(c => {
-         if(c.id !== 'check-solo-existencia' && c.name !== 'archivos_requeridos[]') c.checked = false;
+        if (c.id !== 'check-solo-existencia' && c.name !== 'archivos_requeridos[]') c.checked = false;
     });
 
     const colExportar = lista.columnas_exportar || [];
     colExportar.forEach(col => {
         const cb = document.querySelector(`input[value="${col}"][onchange="actualizarOrdenCreacion(this)"]`);
-        if(cb) {
+        if (cb) {
             cb.checked = true;
             actualizarOrdenCreacion(cb);
         }
@@ -103,7 +104,7 @@ window.abrirModalEdicion = function(event, id) {
     toggleModal(true);
 }
 
-window.actualizarOrdenCreacion = function(checkbox) {
+window.actualizarOrdenCreacion = function (checkbox) {
     const valor = checkbox.value;
     const badge = document.getElementById('badge-creacion-' + valor);
     if (checkbox.checked) {
@@ -120,7 +121,7 @@ window.actualizarOrdenCreacion = function(checkbox) {
     document.getElementById('input-columnas-exportar').value = ordenCreacion.join(',');
 }
 
-window.guardarNuevaLista = async function(e) {
+window.guardarNuevaLista = async function (e) {
     e.preventDefault();
     if (ordenCreacion.length === 0) { alert("Debes seleccionar al menos una columna para exportar."); return; }
 
@@ -163,7 +164,7 @@ window.guardarNuevaLista = async function(e) {
     }
 }
 
-window.actualizarOrden = function(checkbox) {
+window.actualizarOrden = function (checkbox) {
     const valor = checkbox.value;
     const badge = document.getElementById('badge-' + valor);
     if (checkbox.checked) {
@@ -177,14 +178,14 @@ window.actualizarOrden = function(checkbox) {
     }
 }
 
-window.verificarArchivos = function() {
+window.verificarArchivos = function () {
     const fileExistencias = document.getElementById('file-existencias');
-    if (!fileExistencias) return; 
+    if (!fileExistencias) return;
 
     const inputs = {
         'existencias': fileExistencias.value !== "",
-        'precios':     document.getElementById('file-precios').value !== "",
-        'costos':      document.getElementById('file-costos').value !== ""
+        'precios': document.getElementById('file-precios').value !== "",
+        'costos': document.getElementById('file-costos').value !== ""
     };
 
     for (const [archivo, campos] of Object.entries(camposPorArchivo)) {
@@ -201,7 +202,7 @@ window.verificarArchivos = function() {
                     label.classList.add('disabled-option');
                     label.classList.remove('hover:bg-dark-700', 'cursor-pointer');
                     checkbox.disabled = true;
-                    if(checkbox.checked) {
+                    if (checkbox.checked) {
                         checkbox.checked = false;
                         actualizarOrden(checkbox);
                     }
@@ -211,7 +212,7 @@ window.verificarArchivos = function() {
     }
 }
 
-window.procesarSolicitud = async function(tipo) {
+window.procesarSolicitud = async function (tipo) {
     const fileExistencias = document.getElementById('file-existencias');
     const tieneExistencias = fileExistencias && fileExistencias.value !== "";
     const tienePrecios = document.getElementById('file-precios').value !== "";
@@ -220,8 +221,12 @@ window.procesarSolicitud = async function(tipo) {
     if (tipo === 'clientes') {
         const fileClientes = document.getElementById('file-clientes').value;
         if (!fileClientes) { mostrarToast("Sube el archivo CSV de Clientes", "red"); return; }
-    } 
-    else if (!isNaN(tipo)) { 
+    }
+    else if (tipo === 'gastos') {
+        const fileGastos = document.getElementById('file-gastos').value;
+        if (!fileGastos) { mostrarToast("⚠️ Sube el archivo de Gastos Comprobables", "red"); return; }
+    }
+    else if (!isNaN(tipo)) {
         if (!tieneExistencias) { mostrarToast("Existencias es obligatorio.", "red"); return; }
         if (window.GeliaConfig && window.GeliaConfig.customLists) {
             const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
@@ -232,7 +237,7 @@ window.procesarSolicitud = async function(tipo) {
             }
         }
     }
-    else { 
+    else {
         if (!tieneExistencias) { mostrarToast("Primero sube Existencias", "red"); return; }
         if ((tipo === 'resurtido' || tipo === 'actualizada' || tipo === 'inventario') && !tienePrecios) {
             mostrarToast("Esta lista requiere: Existencias + Precios", "red"); return;
@@ -248,8 +253,9 @@ window.procesarSolicitud = async function(tipo) {
     if (!isNaN(tipo)) {
         const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
         nombreTipo = listaConfig ? listaConfig.titulo_lista : "Lista Personalizada";
-    } 
+    }
     else if (tipo === 'clientes') { nombreTipo = "Limpieza de Clientes"; }
+    else if (tipo === 'gastos') { nombreTipo = "Gastos Comprobables"; }
     else if (tipo === 'resurtido') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Lista3']; nombreTipo = "Lista de Resurtido"; }
     else if (tipo === 'costos') { columnas = ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp']; nombreTipo = "Lista de Costos"; }
     else if (tipo === 'actualizada') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas']; nombreTipo = "Lista Actualizada"; }
@@ -262,7 +268,7 @@ window.procesarSolicitud = async function(tipo) {
 
     const form = document.getElementById('form-principal');
     const formData = new FormData(form);
-    
+
     if (columnas.length > 0) formData.append('orden_final', columnas.join(','));
     formData.append('tipo_lista', tipo);
 
@@ -292,19 +298,19 @@ window.procesarSolicitud = async function(tipo) {
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = downloadUrl;
-        
+
         const contentDisposition = response.headers.get('Content-Disposition');
         let fileName = `${nombreTipo}.xlsx`;
         if (contentDisposition) {
             const fileNameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
             if (fileNameMatch && fileNameMatch.length === 2) fileName = fileNameMatch[1];
         }
-        
+
         a.download = fileName;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        
+
         ocultarCarga();
         mostrarToast("Archivo Generado Exitosamente!", "green");
 
@@ -315,7 +321,7 @@ window.procesarSolicitud = async function(tipo) {
     }
 }
 
-window.eliminarLista = async function(event, id) {
+window.eliminarLista = async function (event, id) {
     event.stopPropagation();
     if (!confirm("Eliminar esta lista personalizada?")) return;
     mostrarCarga("Eliminando...");
@@ -329,9 +335,9 @@ window.eliminarLista = async function(event, id) {
     } catch (error) { console.error(error); alert("Error de red."); } finally { ocultarCarga(); }
 }
 
-window.mostrarCarga = function(m) { document.getElementById('overlay-carga').classList.remove('hidden'); document.getElementById('texto-carga').innerText = m; }
-window.ocultarCarga = function() { document.getElementById('overlay-carga').classList.add('hidden'); }
-window.mostrarToast = function(m, c) {
+window.mostrarCarga = function (m) { document.getElementById('overlay-carga').classList.remove('hidden'); document.getElementById('texto-carga').innerText = m; }
+window.ocultarCarga = function () { document.getElementById('overlay-carga').classList.add('hidden'); }
+window.mostrarToast = function (m, c) {
     const t = document.getElementById('toast');
     const tm = document.getElementById('toast-msg');
     t.className = `fixed top-5 right-5 z-50 px-6 py-4 rounded-lg shadow-xl text-white font-bold flex items-center transform transition-all duration-300 ${c === 'red' ? 'bg-red-600' : 'bg-emerald-600'}`;
@@ -339,4 +345,4 @@ window.mostrarToast = function(m, c) {
     t.classList.remove('hidden', 'toast-enter'); t.classList.add('toast-enter-active');
     setTimeout(() => { t.classList.add('hidden'); }, 4000);
 }
-window.mostrarError = function(h) { document.getElementById('alertas').innerHTML = `<div class="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6">${h}</div>`; }
+window.mostrarError = function (h) { document.getElementById('alertas').innerHTML = `<div class="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6">${h}</div>`; }

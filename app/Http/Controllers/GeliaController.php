@@ -151,6 +151,65 @@ class GeliaController extends Controller
         }
 
         // ---------------------------------------------------------
+        // MODO 1.5: GASTOS COMPROBABLES
+        // ---------------------------------------------------------
+        if ($tipoLista === 'gastos') {
+            // 1. Validación estricta de seguridad
+            $validator = Validator::make($request->all(), [
+                'archivo_gastos' => 'required|file',
+                'filtro_tipo' => 'nullable|string|in:TODOS,Remisión,Pedido' // Aseguramos que solo reciba estos 3 valores
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $filtroTipo = $request->input('filtro_tipo', 'TODOS');
+            $listaGastos = [];
+
+            // 2. Procesamiento seguro
+            $this->procesarArchivoSeguro($request->file('archivo_gastos'), function ($ruta) use (&$listaGastos, $filtroTipo) {
+                
+                // Importamos conservando los encabezados
+                (new FastExcel)->import($ruta, function ($linea) use (&$listaGastos, $filtroTipo) {
+                    
+                    $folioCrudo = $linea['Folio de Venta'] ?? '';
+                    
+                    // 3. Lógica de separación
+                    $partes = explode(' ', trim((string)$folioCrudo), 2);
+                    
+                    $tipoVenta = $partes[0] ?? ''; // "Remisión" o "Pedido"
+                    $folioVenta = $partes[1] ?? ''; // "42077"
+
+                    // 4. Lógica de filtrado
+                    if ($filtroTipo !== 'TODOS' && strcasecmp($tipoVenta, $filtroTipo) !== 0) {
+                        return; // Ignoramos esta fila
+                    }
+
+                    // 5. Reconstrucción de la fila
+                    $listaGastos[] = [
+                        'Fecha' => $linea['Fecha'] ?? '',
+                        'Cliente' => $linea['Cliente'] ?? '',
+                        'Tipo de Venta' => $tipoVenta,      // NUEVA COLUMNA
+                        'Folio de Venta' => $folioVenta,    // COLUMNA LIMPIA
+                        'Folio gasto' => $linea['Folio gasto'] ?? '',
+                        'Descripción' => $linea['Descripción'] ?? '',
+                        'Cantidad' => $linea['Cantidad'] ?? '',
+                        'Importe' => $linea['Importe'] ?? ''
+                    ];
+                });
+            });
+
+            // 6. Configuración de estilos (Usando directamente la Entidad de OpenSpout)
+            $estiloEncabezado = (new \OpenSpout\Common\Entity\Style\Style())
+                ->setFontBold();
+
+            return (new FastExcel(collect($listaGastos)))
+                ->headerStyle($estiloEncabezado)
+                ->download("GASTOS-COMPROBABLES-$fecha.xlsx");
+        }
+
+        // ---------------------------------------------------------
         // MODO 2: SISTEMA DE EXISTENCIAS (Dinámico + Estándar)
         // ---------------------------------------------------------
 

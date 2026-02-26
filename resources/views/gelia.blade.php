@@ -26,7 +26,7 @@
                 <h2 id="modal-title" class="text-2xl font-bold text-white">Nueva Lista Personalizada</h2>
                 <button onclick="toggleModal(false)" class="text-gray-400 hover:text-white text-2xl">&times;</button>
             </div>
-            
+
             <form id="form-crear-lista" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                 <input type="hidden" id="lista-id" name="lista_id" value="">
 
@@ -39,7 +39,7 @@
                         <label class="block text-sm font-medium text-gray-400 mb-1">Nombre de la Lista (Boton):</label>
                         <input type="text" name="titulo_lista" required class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none" placeholder="Ej: Lista Finanzas">
                     </div>
-                     <div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-400 mb-1">Color del Tema:</label>
                         <select name="color" class="w-full bg-dark-900 border border-dark-700 rounded p-2 text-white focus:border-blue-500 outline-none">
                             <option value="blue">Azul (Estandar)</option>
@@ -61,7 +61,9 @@
                             <span class="bg-dark-700 text-gray-400 px-3 py-2 rounded-r border border-l-0 border-dark-700 text-sm">-[FECHA].xlsx</span>
                         </div>
                         <p class="text-[10px] text-orange-400 mt-2 font-bold flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
                             EL NOMBRE DEBE IR SIEMPRE CON GUIONES (Ej: MI-LISTA) o el archivo tendra un nombre erroneo.
                         </p>
                     </div>
@@ -99,18 +101,18 @@
                         <p class="text-xs text-gray-500 mb-2">Haz clic para anadir/quitar. El numero indica el orden.</p>
                         <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
                             @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado', 'CostoWizerp'] as $campo)
-                                @php
-                                    // Nombres amigables para mostrar en la interfaz
-                                    $nombreMostrar = $campo;
-                                    if($campo == 'ListaBoutique') $nombreMostrar = 'Lista Boutique';
-                                    if($campo == 'CostoCalculado') $nombreMostrar = 'Costo (L.Resurtido)';
-                                    if($campo == 'CostoWizerp') $nombreMostrar = 'Costos (L. Costos)';
-                                @endphp
-                                <label class="relative flex items-center space-x-2 bg-dark-900 p-2 rounded border border-dark-700 cursor-pointer hover:bg-dark-700 transition select-none">
-                                    <input type="checkbox" value="{{ $campo }}" onchange="actualizarOrdenCreacion(this)" class="w-4 h-4 rounded bg-dark-800 border-dark-600">
-                                    <span class="text-xs text-gray-300">{{ $nombreMostrar }}</span>
-                                    <span id="badge-creacion-{{ $campo }}" class="hidden absolute top-1 right-1 bg-blue-600 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full"></span>
-                                </label>
+                            @php
+                            // Nombres amigables para mostrar en la interfaz
+                            $nombreMostrar = $campo;
+                            if($campo == 'ListaBoutique') $nombreMostrar = 'Lista Boutique';
+                            if($campo == 'CostoCalculado') $nombreMostrar = 'Costo (L.Resurtido)';
+                            if($campo == 'CostoWizerp') $nombreMostrar = 'Costos (L. Costos)';
+                            @endphp
+                            <label class="relative flex items-center space-x-2 bg-dark-900 p-2 rounded border border-dark-700 cursor-pointer hover:bg-dark-700 transition select-none">
+                                <input type="checkbox" value="{{ $campo }}" onchange="actualizarOrdenCreacion(this)" class="w-4 h-4 rounded bg-dark-800 border-dark-600">
+                                <span class="text-xs text-gray-300">{{ $nombreMostrar }}</span>
+                                <span id="badge-creacion-{{ $campo }}" class="hidden absolute top-1 right-1 bg-blue-600 text-white text-[9px] font-bold w-4 h-4 flex items-center justify-center rounded-full"></span>
+                            </label>
                             @endforeach
                         </div>
                         <input type="hidden" name="columnas_exportar" id="input-columnas-exportar">
@@ -126,7 +128,7 @@
     </div>
 
     <div class="max-w-6xl mx-auto p-6">
-        
+
         <header class="flex items-center justify-between mb-8 border-b border-dark-700 pb-6">
             <div>
                 <h1 class="text-4xl font-extrabold text-white tracking-tight">
@@ -144,20 +146,22 @@
 
         <form id="form-principal" enctype="multipart/form-data">
             @csrf
-            
+
             <h2 class="text-xl font-bold text-white mb-4 flex items-center">
                 <span class="bg-blue-600 w-2 h-6 rounded mr-2"></span> Zona de Carga
             </h2>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                
+
                 <div class="drop-zone bg-dark-800 border-2 border-dark-700 rounded-xl p-5 hover:border-blue-500/50 transition-all duration-200" id="card-existencias">
                     <div class="flex items-center justify-between mb-1">
                         <h3 class="font-bold text-md text-blue-400">1. Existencias *</h3>
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
                             Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
@@ -175,7 +179,9 @@
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
                             Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
@@ -193,7 +199,9 @@
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
                             Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
@@ -205,13 +213,15 @@
                     <input type="file" id="file-costos" name="costos" onchange="verificarArchivos()" class="block w-full text-xs text-gray-400 file:bg-purple-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-purple-500 cursor-pointer">
                 </div>
 
-                 <div class="drop-zone bg-dark-800 border-2 border-yellow-700/50 rounded-xl p-5 hover:border-yellow-500 transition-all duration-200 relative overflow-hidden" id="card-clientes">
+                <div class="drop-zone bg-dark-800 border-2 border-yellow-700/50 rounded-xl p-5 hover:border-yellow-500 transition-all duration-200 relative overflow-hidden" id="card-clientes">
                     <div class="flex items-center justify-between mb-1">
                         <h3 class="font-bold text-md text-yellow-400">4. Clientes CSV</h3>
                     </div>
                     <details class="mb-4 group">
                         <summary class="text-[11px] text-gray-500 hover:text-gray-300 cursor-pointer list-none flex items-center gap-1 transition select-none">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 transition-transform duration-200 group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                            </svg>
                             Ver instrucciones
                         </summary>
                         <div class="mt-2 text-[10px] text-gray-400 bg-dark-900 p-2 rounded border border-dark-700 leading-relaxed shadow-inner">
@@ -256,8 +266,39 @@
                             Genera una lista limpia de IDs y Nombres. Limpia y corrige el archivo CSV.
                         </p>
                         <button type="button" onclick="procesarSolicitud('clientes')" class="w-full py-3 bg-yellow-600/20 border border-yellow-600/50 text-yellow-400 hover:bg-yellow-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd" />
+                            </svg>
                             Procesar Lista Clientes
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-10">
+                <h2 class="text-xl font-bold text-white mb-5 flex items-center">
+                    <span class="bg-cyan-600 w-2 h-6 rounded mr-2"></span> Filtrar Gastos Comprobables
+                </h2>
+
+                <div class="bg-dark-800 border border-dark-700 p-5 rounded-xl flex flex-col md:flex-row gap-6 items-center shadow-lg">
+                    <div class="drop-zone border-2 border-green-900/50 border-dashed rounded-lg p-4 w-full md:w-1/3 hover:border-green-500 transition-all bg-dark-900/50" id="card-gastos">
+                        <span class="block text-green-400 font-bold mb-2 text-sm">Subir Archivo Excel</span>
+                        <input type="file" id="file-gastos" name="archivo_gastos" class="block w-full text-xs text-gray-400 file:bg-green-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-green-500 cursor-pointer">
+                    </div>
+
+                    <div class="w-full md:w-1/3">
+                        <label class="block text-sm font-medium text-gray-400 mb-2">Filtrar Por tipo</label>
+                        <select name="filtro_tipo" id="filtro-tipo" class="w-full bg-dark-900 border border-dark-700 rounded-lg p-3 text-white focus:border-green-500 outline-none cursor-pointer">
+                            <option value="TODOS">Ambos (Pedidos y Remisiones)</option>
+                            <option value="Remisión">Solo Remisiones</option>
+                            <option value="Pedido">Solo Pedidos</option>
+                        </select>
+                    </div>
+
+                    <div class="w-full md:w-1/3 md:mt-6">
+                        <button type="button" onclick="procesarSolicitud('gastos')" class="w-full py-3 bg-green-600/20 border border-green-600/50 text-dark-400 hover:bg-green-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            Generar y Descargar
                         </button>
                     </div>
                 </div>
@@ -270,41 +311,47 @@
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     @foreach($listasPersonalizadas as $lista)
-                        @php
-                            $colors = [
-                                'blue' => 'text-blue-400 hover:border-blue-500 group-hover:text-blue-300',
-                                'emerald' => 'text-emerald-400 hover:border-emerald-500 group-hover:text-emerald-300',
-                                'purple' => 'text-purple-400 hover:border-purple-500 group-hover:text-purple-300',
-                                'orange' => 'text-orange-400 hover:border-orange-500 group-hover:text-orange-300',
-                                'pink' => 'text-pink-400 hover:border-pink-500 group-hover:text-pink-300',
-                                'red' => 'text-red-400 hover:border-red-500 group-hover:text-red-300',
-                            ];
-                            $claseColor = $colors[$lista->color] ?? $colors['blue'];
-                        @endphp
+                    @php
+                    $colors = [
+                    'blue' => 'text-blue-400 hover:border-blue-500 group-hover:text-blue-300',
+                    'emerald' => 'text-emerald-400 hover:border-emerald-500 group-hover:text-emerald-300',
+                    'purple' => 'text-purple-400 hover:border-purple-500 group-hover:text-purple-300',
+                    'orange' => 'text-orange-400 hover:border-orange-500 group-hover:text-orange-300',
+                    'pink' => 'text-pink-400 hover:border-pink-500 group-hover:text-pink-300',
+                    'red' => 'text-red-400 hover:border-red-500 group-hover:text-red-300',
+                    ];
+                    $claseColor = $colors[$lista->color] ?? $colors['blue'];
+                    @endphp
 
-                        <button type="button" onclick="procesarSolicitud('{{ $lista->id }}')" class="relative p-4 bg-dark-800 border border-dark-700 hover:bg-dark-700 rounded-xl text-left group transition pr-16 {{ $claseColor }} h-full flex flex-col justify-between">
-                            
-                            <div>
-                                <span class="block font-bold mb-1 text-lg">{{ $lista->titulo_lista }}</span>
-                                <span class="block text-[11px] text-gray-500 mb-1 leading-tight">{{ Str::limit($lista->descripcion, 55) }}</span>
-                                <span class="block text-[10px] text-gray-600 italic mt-2">Por: {{ $lista->nombre_creador }}</span>
-                            </div>
+                    <button type="button" onclick="procesarSolicitud('{{ $lista->id }}')" class="relative p-4 bg-dark-800 border border-dark-700 hover:bg-dark-700 rounded-xl text-left group transition pr-16 {{ $claseColor }} h-full flex flex-col justify-between">
 
-                            <div onclick="abrirModalEdicion(event, '{{ $lista->id }}')" class="absolute top-2 right-10 p-2 rounded-full hover:bg-blue-900/50 text-gray-600 hover:text-blue-500 transition cursor-pointer" title="Editar lista">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                            </div>
+                        <div>
+                            <span class="block font-bold mb-1 text-lg">{{ $lista->titulo_lista }}</span>
+                            <span class="block text-[11px] text-gray-500 mb-1 leading-tight">{{ Str::limit($lista->descripcion, 55) }}</span>
+                            <span class="block text-[10px] text-gray-600 italic mt-2">Por: {{ $lista->nombre_creador }}</span>
+                        </div>
 
-                            <div onclick="eliminarLista(event, '{{ $lista->id }}')" class="absolute top-2 right-2 p-2 rounded-full hover:bg-red-900/50 text-gray-600 hover:text-red-500 transition cursor-pointer" title="Eliminar lista">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            </div>
+                        <div onclick="abrirModalEdicion(event, '{{ $lista->id }}')" class="absolute top-2 right-10 p-2 rounded-full hover:bg-blue-900/50 text-gray-600 hover:text-blue-500 transition cursor-pointer" title="Editar lista">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                        </div>
 
-                            @if($lista->solo_con_existencia)
-                                <span class="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
-                                    Solo c/ Existencia
-                                </span>
-                            @endif
-                        </button>
+                        <div onclick="eliminarLista(event, '{{ $lista->id }}')" class="absolute top-2 right-2 p-2 rounded-full hover:bg-red-900/50 text-gray-600 hover:text-red-500 transition cursor-pointer" title="Eliminar lista">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </div>
+
+                        @if($lista->solo_con_existencia)
+                        <span class="absolute bottom-3 right-3 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                            Solo c/ Existencia
+                        </span>
+                        @endif
+                    </button>
                     @endforeach
                 </div>
             </div>
@@ -312,32 +359,32 @@
 
             <div class="border-t border-dark-700 pt-8">
                 <h2 class="text-lg font-bold text-gray-300 mb-4">Genera una lista personalizada (Manual)</h2>
-                
+
                 <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
                     @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'] as $campo)
-                        <label id="label-{{ $campo }}" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
-                            <input type="checkbox" id="check-{{ $campo }}" value="{{ $campo }}" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                            <span class="text-sm font-medium text-gray-300">{{ $campo }}</span>
-                            <span id="badge-{{ $campo }}" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
-                        </label>
+                    <label id="label-{{ $campo }}" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
+                        <input type="checkbox" id="check-{{ $campo }}" value="{{ $campo }}" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
+                        <span class="text-sm font-medium text-gray-300">{{ $campo }}</span>
+                        <span id="badge-{{ $campo }}" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
+                    </label>
                     @endforeach
 
                     @foreach(['PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique'] as $campo)
-                        @php $nombreMostrar = $campo == 'ListaBoutique' ? 'Lista Boutique' : $campo; @endphp
-                        <label id="label-{{ $campo }}" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
-                            <input type="checkbox" id="check-{{ $campo }}" value="{{ $campo }}" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
-                            <span class="text-sm font-medium text-gray-300">{{ $nombreMostrar }}</span>
-                            <span id="badge-{{ $campo }}" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
-                        </label>
+                    @php $nombreMostrar = $campo == 'ListaBoutique' ? 'Lista Boutique' : $campo; @endphp
+                    <label id="label-{{ $campo }}" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
+                        <input type="checkbox" id="check-{{ $campo }}" value="{{ $campo }}" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
+                        <span class="text-sm font-medium text-gray-300">{{ $nombreMostrar }}</span>
+                        <span id="badge-{{ $campo }}" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
+                    </label>
                     @endforeach
 
-                     <label id="label-CostoCalculado" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
+                    <label id="label-CostoCalculado" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                         <input type="checkbox" id="check-CostoCalculado" value="CostoCalculado" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
                         <span class="text-sm font-medium text-gray-300">Costo (L.Resurtido)</span>
                         <span id="badge-CostoCalculado" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
                     </label>
 
-                     <label id="label-CostoWizerp" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
+                    <label id="label-CostoWizerp" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                         <input type="checkbox" id="check-CostoWizerp" value="CostoWizerp" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-blue-600 rounded bg-dark-900 border-dark-700">
                         <span class="text-sm font-medium text-gray-300">Costo (L. Costos)</span>
                         <span id="badge-CostoWizerp" class="hidden absolute -top-2 -right-2 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full"></span>
@@ -363,4 +410,5 @@
         };
     </script>
 </body>
+
 </html>
