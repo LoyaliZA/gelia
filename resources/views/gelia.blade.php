@@ -304,6 +304,27 @@
                 </div>
             </div>
 
+            <div class="mb-10">
+                <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <span class="bg-orange-600 w-2 h-6 rounded mr-2"></span> Filtrar Archivo Transacciones
+                </h2>
+
+                <div class="bg-dark-800 border border-dark-700 p-5 rounded-xl flex flex-col md:flex-row gap-6 items-center shadow-lg">
+                    <div class="drop-zone border-2 border-orange-900/50 border-dashed rounded-lg p-4 w-full md:w-2/3 hover:border-orange-500 transition-all bg-dark-900" id="card-transacciones">
+                        <span class="block text-orange-400 font-bold mb-2 text-sm">Subir Archvo de Transacciones (Excel/CSV) </span>
+                        <p class="text-[10px] text-gray-500 mb-3">Se limpiarán automáticamente las columnas no deseadas (Documento, Tag, Saldo, Comisión, etc.)</p>
+                        <input type="file" id="file-transacciones" name="archivo_transacciones" class="block w-full text-xs text-gray-400 file:bg-orange-600 file:text-white file:rounded-full file:px-3 file:py-1 file:border-0 hover:file:bg-orange-500 cursor-pointer">
+                    </div>
+
+                    <div class="w-full md:w-1/3 md:mt-0">
+                        <button type="button" onclick="procesarSolicitud('transacciones')" class="w-full py-4 bg-indigo-600/20 border border-indigo-600/50 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
+                            Limpiar Transacciones
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             @if(isset($listasPersonalizadas) && count($listasPersonalizadas) > 0)
             <div class="mb-10">
                 <h2 class="text-xl font-bold text-white mb-4 flex items-center border-t border-dark-700 pt-6">

@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (zone.id === 'card-costos') zone.classList.add('border-purple-500');
             if (zone.id === 'card-clientes') zone.classList.add('border-yellow-500');
             if (zone.id === 'card-gastos') zone.classList.add('border-green-500');
+            if (zone.id === 'card-transacciones') zone.classList.add('border-orange-500');
         });
         zone.addEventListener('dragleave', (e) => {
             e.preventDefault();
@@ -226,6 +227,10 @@ window.procesarSolicitud = async function (tipo) {
         const fileGastos = document.getElementById('file-gastos').value;
         if (!fileGastos) { mostrarToast("⚠️ Sube el archivo de Gastos Comprobables", "red"); return; }
     }
+    else if (tipo === 'transacciones') {
+        const fileTransacciones = document.getElementById('file-transacciones').value;
+        if (!fileTransacciones) { mostrarToast("⚠️ Sube el archivo de Transacciones Bancarias", "red"); return; }
+    }
     else if (!isNaN(tipo)) {
         if (!tieneExistencias) { mostrarToast("Existencias es obligatorio.", "red"); return; }
         if (window.GeliaConfig && window.GeliaConfig.customLists) {
@@ -256,6 +261,7 @@ window.procesarSolicitud = async function (tipo) {
     }
     else if (tipo === 'clientes') { nombreTipo = "Limpieza de Clientes"; }
     else if (tipo === 'gastos') { nombreTipo = "Gastos Comprobables"; }
+    else if (tipo === 'transacciones') { nombreTipo = "Transacciones Bancarias"; }
     else if (tipo === 'resurtido') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Lista3']; nombreTipo = "Lista de Resurtido"; }
     else if (tipo === 'costos') { columnas = ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp']; nombreTipo = "Lista de Costos"; }
     else if (tipo === 'actualizada') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas']; nombreTipo = "Lista Actualizada"; }
