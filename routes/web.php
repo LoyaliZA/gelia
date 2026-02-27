@@ -21,9 +21,9 @@ Route::post('/actualizar-lista/{id}', [GeliaController::class, 'actualizarLista'
 // =========================================================
 // S.E.F.E. | Sistema Extractor de Facturas Electrónicas
 // =========================================================
-Route::get('/sefe', [SefeController::class, 'index'])->name('sefe.index');
-Route::post('/sefe/proveedor', [SefeController::class, 'guardarProveedor'])->name('sefe.proveedor.guardar');
-Route::post('/sefe/procesar', [SefeController::class, 'procesarFacturas'])->name('sefe.procesar');
+//Route::get('/sefe', [SefeController::class, 'index'])->name('sefe.index');
+//Route::post('/sefe/proveedor', [SefeController::class, 'guardarProveedor'])->name('sefe.proveedor.guardar');
+//Route::post('/sefe/procesar', [SefeController::class, 'procesarFacturas'])->name('sefe.procesar');
 
 //Ruta de pruebas
 Route::get('/gelia-test', [GeliaController::class, 'testIndex'])->name('gelia.test');
