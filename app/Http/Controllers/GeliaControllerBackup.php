@@ -1,0 +1,457 @@
+<?php
+//El namespace es la dirección del controlador y donde esta alojado, le dice a laraval exactamende donde se encuentra 
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Rap2hpoutre\FastExcel\FastExcel;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log; // <-- IMPORTAMOS LOGS PARA LA BITÁCORA
+use App\Models\CustomList; // Se importa el modelo para interactuar con la tabla de listas personalizadas
+
+class GeliaController extends Controller
+{
+    // Muestra la vista principal cargando las listas guardadas
+    public function index()
+    {
+        // Obtenemos solo las listas activas
+        $listasPersonalizadas = CustomList::where('active', true)->get();
+        return view('gelia', compact('listasPersonalizadas')); // Pasamos las listas a la vista para que se muestren en el select de la vista gelia.blade.php
+    }
+
+    // Muestra la vista principal cargando las listas guardadas
+    public function testIndex()
+    {
+        // Obtenemos solo las listas activas
+        $listasPersonalizadas = CustomList::where('active', true)->get();
+        return view('gelia-test', compact('listasPersonalizadas')); // Pasamos las listas a la vista para que se muestren en el select de la vista gelia.blade.php
+    }
+
+    // Guarda una nueva configuración de lista
+    public function guardarLista(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'nombre_creador' => 'required|string|max:100',
+            'titulo_lista' => 'required|string|max:50',
+            'descripcion' => 'nullable|string',
+            'color' => 'required|string',
+            'archivos_requeridos' => 'required|array', // ['existencias', 'precios']
+            'columnas_exportar' => 'required|string', // "SKU,PG,Lista3" (viene como string separado por comas)
+            'nombre_archivo_salida' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Convertimos la cadena de columnas a array para guardarlo como JSON
+        $columnasArray = explode(',', $request->columnas_exportar);
+        
+        // Atrapamos si el checkbox de "solo existencia" viene marcado
+        $soloConExistencia = $request->boolean('solo_con_existencia');
+
+        $lista = CustomList::create([
+            'nombre_creador' => $request->nombre_creador,
+            'titulo_lista' => $request->titulo_lista,
+            'descripcion' => $request->descripcion,
+            'color' => $request->color,
+            'archivos_requeridos' => $request->archivos_requeridos,
+            'columnas_exportar' => $columnasArray,
+            'nombre_archivo_salida' => strtoupper($request->nombre_archivo_salida),
+            'solo_con_existencia' => $soloConExistencia,
+            'active' => true
+        ]);
+
+        // LOG: Guardamos el registro de creación tras bambalinas
+        Log::info("GELIA - Nueva lista creada: '{$lista->titulo_lista}' por {$lista->nombre_creador}.");
+
+        return response()->json(['message' => 'Lista creada con éxito']);
+    }
+
+    // NUEVO MÉTODO: Actualiza una lista existente
+    public function actualizarLista(Request $request, $id)
+    {
+        $lista = CustomList::find($id);
+
+        if (!$lista) {
+            return response()->json(['error' => 'Lista no encontrada'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'nombre_creador' => 'required|string|max:100',
+            'titulo_lista' => 'required|string|max:50',
+            'descripcion' => 'nullable|string',
+            'color' => 'required|string',
+            'archivos_requeridos' => 'required|array',
+            'columnas_exportar' => 'required|string',
+            'nombre_archivo_salida' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $columnasArray = explode(',', $request->columnas_exportar);
+        $soloConExistencia = $request->boolean('solo_con_existencia');
+
+        $lista->update([
+            'nombre_creador' => $request->nombre_creador,
+            'titulo_lista' => $request->titulo_lista,
+            'descripcion' => $request->descripcion,
+            'color' => $request->color,
+            'archivos_requeridos' => $request->archivos_requeridos,
+            'columnas_exportar' => $columnasArray,
+            'nombre_archivo_salida' => strtoupper($request->nombre_archivo_salida),
+            'solo_con_existencia' => $soloConExistencia,
+        ]);
+
+        // LOG: Guardamos el registro de edición tras bambalinas
+        Log::info("GELIA - Lista editada: '{$lista->titulo_lista}' por {$lista->nombre_creador}.");
+
+        return response()->json(['message' => 'Lista actualizada con éxito']);
+    }
+
+    public function generar(Request $request)
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', '-1');
+
+        // =========================================================
+        // PANEL DE VARIABLES GLOBALES (Fórmulas)
+        // Modifica estos valores si cambian los porcentajes en el futuro
+        // =========================================================
+        $divisorCostoCalculado = 1.3827;
+        $multiplicadorPlataformas = 0.77;
+        $multiplicadorLista3 = 0.8572;
+        $multiplicadorLista4 = 0.8229;
+        $multiplicadorBoutique = 0.75; // <-- NUEVA VARIABLE PARA BOUTIQUE
+        // =========================================================
+
+        $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA'); 
+        $fecha = date('d-m-y');
+
+        // ---------------------------------------------------------
+        // MODO 1: LIMPIEZA DE CLIENTES
+        // ---------------------------------------------------------
+        if ($tipoLista === 'clientes') {
+            $validator = Validator::make($request->all(), ['clientes' => 'required|file']);
+            if ($validator->fails()) return response()->json(['errors' => $validator->errors()], 422);
+
+            $listaClientes = [];
+            $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaClientes) {
+                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaClientes) {
+                    $idRaw = $linea[0] ?? '';
+                    $nombreRaw = $linea[1] ?? '';
+                    $id = ltrim(trim((string)$idRaw), '0'); 
+                    $nombre = trim((string)$nombreRaw);
+                    if ($id === '' || strtolower($id) === 'id' || strtolower($id) === 'clientes') return;
+                    $listaClientes[] = ['ID' => $id, 'NOMBRE' => $nombre];
+                });
+            });
+            return (new FastExcel(collect($listaClientes)))->download("CLIENTES-LIMPIOS-$fecha.xlsx");
+        }
+
+        // ---------------------------------------------------------
+        // MODO 1.5: GASTOS COMPROBABLES
+        // ---------------------------------------------------------
+        if ($tipoLista === 'gastos') {
+            // 1. Validación estricta de seguridad
+            $validator = Validator::make($request->all(), [
+                'archivo_gastos' => 'required|file',
+                'filtro_tipo' => 'nullable|string|in:TODOS,Remisión,Pedido' // Aseguramos que solo reciba estos 3 valores
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $filtroTipo = $request->input('filtro_tipo', 'TODOS');
+            $listaGastos = [];
+
+            // 2. Procesamiento seguro
+            $this->procesarArchivoSeguro($request->file('archivo_gastos'), function ($ruta) use (&$listaGastos, $filtroTipo) {
+                
+                // Importamos conservando los encabezados
+                (new FastExcel)->import($ruta, function ($linea) use (&$listaGastos, $filtroTipo) {
+                    
+                    $folioCrudo = $linea['Folio de Venta'] ?? '';
+                    
+                    // 3. Lógica de separación
+                    $partes = explode(' ', trim((string)$folioCrudo), 2);
+                    
+                    $tipoVenta = $partes[0] ?? ''; // "Remisión" o "Pedido"
+                    $folioVenta = $partes[1] ?? ''; // "42077"
+
+                    // 4. Lógica de filtrado
+                    if ($filtroTipo !== 'TODOS' && strcasecmp($tipoVenta, $filtroTipo) !== 0) {
+                        return; // Ignoramos esta fila
+                    }
+
+                    // 5. Reconstrucción de la fila
+                    $listaGastos[] = [
+                        'Fecha' => $linea['Fecha'] ?? '',
+                        'Cliente' => $linea['Cliente'] ?? '',
+                        'Tipo de Venta' => $tipoVenta,      // NUEVA COLUMNA
+                        'Folio de Venta' => $folioVenta,    // COLUMNA LIMPIA
+                        'Folio gasto' => $linea['Folio gasto'] ?? '',
+                        'Descripción' => $linea['Descripción'] ?? '',
+                        'Cantidad' => $linea['Cantidad'] ?? '',
+                        'Importe' => $linea['Importe'] ?? ''
+                    ];
+                });
+            });
+
+            // 6. Configuración de estilos (Usando directamente la Entidad de OpenSpout)
+            $estiloEncabezado = (new \OpenSpout\Common\Entity\Style\Style())
+                ->setFontBold();
+
+            return (new FastExcel(collect($listaGastos)))
+                ->headerStyle($estiloEncabezado)
+                ->download("GASTOS-COMPROBABLES-$fecha.xlsx");
+        }
+
+        // ---------------------------------------------------------
+        // MODO 1.6: TRANSACCIONES BANCARIAS
+        // ---------------------------------------------------------
+        if ($tipoLista === 'transacciones') {
+            $validator = Validator::make($request->all(), [
+                'archivo_transacciones' => 'required|file'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $listaTransacciones = [];
+
+            // 1. Procesamiento y Sanitización de Datos (Elimina los saltos de línea del banco)
+            $this->procesarArchivoSeguro($request->file('archivo_transacciones'), function ($ruta) use (&$listaTransacciones) {
+                (new FastExcel)->import($ruta, function ($linea) use (&$listaTransacciones) {
+                    
+                    // Función interna (Closure) para limpiar enters \n, \r y espacios múltiples
+                    $limpiarTexto = function ($texto) {
+                        return trim(preg_replace('/\s+/', ' ', (string)($texto ?? '')));
+                    };
+
+                    // Armamos la fila con cada columna estrictamente sanitizada
+                    $listaTransacciones[] = [
+                        'Fecha Movimiento'  => $limpiarTexto($linea['Fecha Movimiento']),
+                        'Fecha Captura'     => $limpiarTexto($linea['Fecha Captura']),
+                        'Cliente/Proveedor' => $limpiarTexto($linea['Cliente/Proveedor']),
+                        'Transacción'       => $limpiarTexto($linea['Transacción']),
+                        'Depósito'          => $limpiarTexto($linea['Depósito']),
+                        'Forma de Pago'     => $limpiarTexto($linea['Forma de Pago']),
+                        'Referencia'        => $limpiarTexto($linea['Referencia']),
+                        'Concepto'          => $limpiarTexto($linea['Concepto'])
+                    ];
+                });
+            });
+
+            // 2. Configuración de estilos Avanzados (Negrita + Bordes Perimetrales + Evitar Ajuste)
+            $colorNegro = \OpenSpout\Common\Entity\Style\Color::BLACK;
+            $grosorLinea = \OpenSpout\Common\Entity\Style\Border::WIDTH_THIN;
+            $estiloSolido = \OpenSpout\Common\Entity\Style\Border::STYLE_SOLID;
+
+            // Instanciamos el marco celda por celda (Abajo, Arriba, Izquierda, Derecha)
+            $bordePerimetral = new \OpenSpout\Common\Entity\Style\Border(
+                new \OpenSpout\Common\Entity\Style\BorderPart(\OpenSpout\Common\Entity\Style\Border::BOTTOM, $colorNegro, $grosorLinea, $estiloSolido),
+                new \OpenSpout\Common\Entity\Style\BorderPart(\OpenSpout\Common\Entity\Style\Border::TOP, $colorNegro, $grosorLinea, $estiloSolido),
+                new \OpenSpout\Common\Entity\Style\BorderPart(\OpenSpout\Common\Entity\Style\Border::LEFT, $colorNegro, $grosorLinea, $estiloSolido),
+                new \OpenSpout\Common\Entity\Style\BorderPart(\OpenSpout\Common\Entity\Style\Border::RIGHT, $colorNegro, $grosorLinea, $estiloSolido)
+            );
+
+            // Inyectamos el borde, la negrita y apagamos explícitamente el "wrap text"
+            $estiloEncabezado = (new \OpenSpout\Common\Entity\Style\Style())
+                ->setFontBold()
+                ->setBorder($bordePerimetral)
+                ->setShouldWrapText(false);
+
+            // Configuramos un estilo extra para las filas de datos, asegurando alturas estándar
+            $estiloFilas = (new \OpenSpout\Common\Entity\Style\Style())
+                ->setShouldWrapText(false);
+
+            return (new FastExcel(collect($listaTransacciones)))
+                ->headerStyle($estiloEncabezado)
+                ->rowsStyle($estiloFilas)
+                ->download("TRANSACCIONES-BANCARIAS-$fecha.xlsx");
+        }
+
+        // ---------------------------------------------------------
+        // MODO 2: SISTEMA DE EXISTENCIAS (Dinámico + Estándar)
+        // ---------------------------------------------------------
+
+        // 1. DETECCIÓN DE CONFIGURACIÓN
+        $esListaPersonalizadaBD = is_numeric($tipoLista);
+        $configuracionBD = null;
+
+        if ($esListaPersonalizadaBD) {
+            $configuracionBD = CustomList::find($tipoLista);
+            if (!$configuracionBD) return response()->json(['error' => 'Lista no encontrada'], 404);
+            
+            $nombreArchivo = $configuracionBD->nombre_archivo_salida . "-$fecha.xlsx";
+            $columnasSeleccionadas = $configuracionBD->columnas_exportar;
+
+        } else {
+            $ordenCadena = $request->input('orden_final'); 
+            
+            switch ($tipoLista) {
+                case 'resurtido': $nombreArchivo = "LISTA-DE-RESURTIDO-$fecha.xlsx"; break;
+                case 'costos': $nombreArchivo = "LISTA-DE-COSTOS-$fecha.xlsx"; break;
+                case 'actualizada': $nombreArchivo = "LISTA-ACTUALIZADA-$fecha.xlsx"; break;
+                case 'inventario': $nombreArchivo = "LISTA-DE-INVENTARIO-$fecha.xlsx"; break;
+                default: $nombreArchivo = "LISTA-PERSONALIZADA-$fecha.xlsx"; break;
+            }
+
+            if (!empty($ordenCadena)) {
+                $columnasSeleccionadas = explode(',', $ordenCadena);
+            } elseif ($request->has('columnas')) {
+                $columnasSeleccionadas = $request->input('columnas');
+            } else {
+                return response()->json(['error' => 'Debes seleccionar columnas.'], 422);
+            }
+        }
+
+        // 2. VALIDACIÓN DE ARCHIVOS
+        $rules = ['existencias' => 'required|file'];
+        $messages = [];
+
+        if ($esListaPersonalizadaBD) {
+            $reqs = $configuracionBD->archivos_requeridos;
+            if (in_array('precios', $reqs)) $rules['precios'] = 'required|file';
+            if (in_array('costos', $reqs)) $rules['costos'] = 'required|file';
+        } else {
+            $rules['precios'] = 'nullable|file|required_without:costos';
+            $rules['costos'] = 'nullable|file|required_without:precios';
+            $messages['precios.required_without'] = 'Debes subir Precios o Costos.';
+            $messages['costos.required_without'] = 'Debes subir Precios o Costos.';
+        }
+
+        $validator = Validator::make($request->all(), $rules, $messages);
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // 3. LEER PRECIOS
+        $diccionarioPrecios = [];
+        if ($request->hasFile('precios')) {
+            $this->procesarArchivoSeguro($request->file('precios'), function ($ruta) use (&$diccionarioPrecios) {
+                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$diccionarioPrecios) {
+                    if (!isset($linea[1]) || $linea[1] == 'CODIGO_DEL_PRODUCTO' || $linea[1] == '') return;
+                    $sku = ltrim(trim((string)$linea[1]), '0');
+                    $precio = $linea[7] ?? 0;
+                    $diccionarioPrecios[$sku] = is_numeric($precio) ? (float)$precio : 0.0;
+                });
+            });
+        }
+
+        // 4. LEER COSTOS WIZERP
+        $diccionarioCostosWizerp = [];
+        if ($request->hasFile('costos')) {
+            $this->procesarArchivoSeguro($request->file('costos'), function ($ruta) use (&$diccionarioCostosWizerp) {
+                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$diccionarioCostosWizerp) {
+                    if (!isset($linea[1]) || $linea[1] == 'SKU' || $linea[1] == '') return;
+                    $sku = ltrim(trim((string)$linea[1]), '0');
+                    $costo = $linea[5] ?? 0; 
+                    $costoLimpio = str_replace(['$', ','], '', (string)$costo);
+                    $diccionarioCostosWizerp[$sku] = is_numeric($costoLimpio) ? (float)$costoLimpio : 0.0;
+                });
+            });
+        }
+
+        // 5. PROCESAR EXISTENCIAS
+        $listaCompleta = []; 
+        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique) {
+            $reader = (new FastExcel)->withoutHeaders()->import($ruta);
+            foreach ($reader as $linea) {
+                if (!isset($linea[4]) || $linea[4] == 'Código') continue;
+                $skuCrudo = trim((string)$linea[4]);
+                if ($skuCrudo === '') continue; 
+                $skuBuscador = ltrim($skuCrudo, '0');
+
+                $existenciaRaw = $linea[10] ?? 0;
+                $existencia = is_numeric($existenciaRaw) ? (int)$existenciaRaw : 0;
+
+                // --- NUEVO: FILTRO SOLO CON EXISTENCIA ---
+                if ($esListaPersonalizadaBD && $configuracionBD->solo_con_existencia) {
+                    if ($existencia <= 0) {
+                        continue; // Si tiene 0 existencias o menos, nos saltamos este producto
+                    }
+                }
+                // -----------------------------------------
+
+                $almacen = $linea[1] ?? '';
+                $folio = $linea[3] ?? '';
+                $descripcion = $linea[5] ?? '';
+                $marca = $linea[6] ?? '';
+                
+                $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
+                $costoWizerp = $diccionarioCostosWizerp[$skuBuscador] ?? 0.0;
+
+                // Fórmulas aplicadas usando las variables globales
+                $costoCalculado = $pg > 0 ? $pg / $divisorCostoCalculado : 0.0;
+                $plataformas = $pg * $multiplicadorPlataformas;
+                $lista3 = $pg * $multiplicadorLista3;
+                $lista4 = $pg * $multiplicadorLista4;
+                $listaBoutique = $pg * $multiplicadorBoutique; // <-- CÁLCULO LISTA BOUTIQUE
+
+                $fila = [];
+                foreach ($columnasSeleccionadas as $columna) {
+                    switch ($columna) {
+                        case 'Folio': $fila['Folio'] = $folio; break;
+                        case 'SKU': $fila['SKU'] = $skuCrudo; break;
+                        case 'Descripcion': $fila['Descripcion'] = $descripcion; break;
+                        case 'Existencia': $fila['Existencia'] = $existencia; break;
+                        case 'PG': $fila['PG'] = round($pg, 2); break;
+                        case 'Lista3': $fila['Lista3'] = round($lista3, 2); break;
+                        case 'Lista4': $fila['Lista4'] = round($lista4, 2); break;
+                        case 'ListaBoutique': $fila['Lista Boutique'] = round($listaBoutique, 2); break; // <-- MAPEO COLUMNA BOUTIQUE
+                        case 'Plataformas': $fila['Plataformas'] = round($plataformas, 2); break;
+                        case 'CostoWizerp': $fila['Costo (Wizerp)'] = round($costoWizerp, 2); break;
+                        case 'CostoCalculado': $fila['Costo (Calculado)'] = round($costoCalculado, 2); break;
+                        case 'Almacen': $fila['Almacen'] = $almacen; break;
+                        case 'Marca': $fila['Marca'] = $marca; break;
+                    }
+                }
+                $listaCompleta[] = $fila;
+            }
+        });
+
+        // 6. ORDENAMIENTO
+        if (in_array('Descripcion', $columnasSeleccionadas)) {
+            usort($listaCompleta, function ($a, $b) {
+                return strcasecmp($a['Descripcion'] ?? '', $b['Descripcion'] ?? '');
+            });
+        }
+
+        return (new FastExcel(collect($listaCompleta)))->download($nombreArchivo);
+    }
+
+    private function procesarArchivoSeguro($archivo, callable $callbackLogica)
+    {
+        if (!$archivo) return;
+        $nombreTemp = 'temp_' . uniqid() . '.' . $archivo->getClientOriginalExtension();
+        $rutaCompleta = sys_get_temp_dir() . '/' . $nombreTemp;
+        $archivo->move(sys_get_temp_dir(), $nombreTemp);
+        try {
+            $callbackLogica($rutaCompleta);
+        } finally {
+            if (file_exists($rutaCompleta)) unlink($rutaCompleta);
+        }
+    }
+
+    public function eliminarLista($id)
+    {
+        $lista = CustomList::find($id);
+
+        if ($lista) {
+            $lista->active = false;
+            $lista->save();
+
+            // LOG: Guardamos el registro de eliminación tras bambalinas
+            Log::info("GELIA - Lista eliminada (Ocultada): '{$lista->titulo_lista}'.");
+
+            return response()->json(['message' => 'Lista eliminada correctamente.']);
+        }
+
+        return response()->json(['error' => 'Lista no encontrada.'], 404);
+    }
+}
