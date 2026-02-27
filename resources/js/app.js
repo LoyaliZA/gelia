@@ -222,6 +222,9 @@ window.procesarSolicitud = async function (tipo) {
     if (tipo === 'clientes') {
         const fileClientes = document.getElementById('file-clientes').value;
         if (!fileClientes) { mostrarToast("Sube el archivo CSV de Clientes", "red"); return; }
+        // NUEVA VALIDACIÓN: Asegurar que al menos seleccionó 1 columna
+        const checks = document.querySelectorAll('.check-col-cliente:checked');
+        if (checks.length === 0) { mostrarToast("Selecciona al menos una columna de clientes", "red"); return; }
     }
     else if (tipo === 'gastos') {
         const fileGastos = document.getElementById('file-gastos').value;
@@ -277,6 +280,15 @@ window.procesarSolicitud = async function (tipo) {
 
     if (columnas.length > 0) formData.append('orden_final', columnas.join(','));
     formData.append('tipo_lista', tipo);
+
+    // NUEVO BLOQUE: Empaquetar datos específicos de limpieza de clientes
+    if (tipo === 'clientes') {
+        const checks = document.querySelectorAll('.check-col-cliente:checked');
+        const cols = Array.from(checks).map(c => c.value);
+        formData.append('columnas_clientes', cols.join(','));
+        // Forzamos el envío booleano para sobrescribir el valor de FormData
+        formData.set('incluir_sin_id', document.getElementById('check-incluir-sin-id').checked ? '1' : '0');
+    }
 
     mostrarCarga(`Generando: ${nombreTipo}...`);
     document.getElementById('alertas').innerHTML = '';
@@ -352,3 +364,15 @@ window.mostrarToast = function (m, c) {
     setTimeout(() => { t.classList.add('hidden'); }, 4000);
 }
 window.mostrarError = function (h) { document.getElementById('alertas').innerHTML = `<div class="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6">${h}</div>`; }
+
+// Función para marcar/desmarcar masivamente las columnas de clientes
+window.toggleColumnasClientes = function (btn) {
+    const checks = document.querySelectorAll('.check-col-cliente');
+    const isSelectingAll = btn.innerText.trim() === 'Seleccionar Todas';
+    
+    // Cambiamos el estado de todos los checkboxes
+    checks.forEach(c => c.checked = isSelectingAll);
+    
+    // Alternamos el texto del botón
+    btn.innerText = isSelectingAll ? 'Desmarcar Todas' : 'Seleccionar Todas';
+}

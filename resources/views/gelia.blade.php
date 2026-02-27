@@ -232,46 +232,71 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 mb-10">
-                <div>
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                        <span class="bg-emerald-600 w-2 h-6 rounded mr-2"></span> Listas Predeterminadas
-                    </h2>
-                    <div class="grid grid-cols-2 gap-3 mb-6">
-                        <button type="button" onclick="procesarSolicitud('resurtido')" class="p-4 bg-dark-800 border border-dark-700 hover:border-blue-500 hover:bg-dark-700 rounded-xl text-left group transition">
-                            <span class="block text-blue-400 font-bold mb-1 group-hover:text-blue-300">Lista de Resurtido</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: PG, Plataformas, Lista3</span>
-                        </button>
-                        <button type="button" onclick="procesarSolicitud('costos')" class="p-4 bg-dark-800 border border-dark-700 hover:border-purple-500 hover:bg-dark-700 rounded-xl text-left group transition">
-                            <span class="block text-purple-400 font-bold mb-1 group-hover:text-purple-300">Lista de Costos</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: Costos Wizerp</span>
-                        </button>
-                        <button type="button" onclick="procesarSolicitud('actualizada')" class="p-4 bg-dark-800 border border-dark-700 hover:border-orange-500 hover:bg-dark-700 rounded-xl text-left group transition">
-                            <span class="block text-orange-400 font-bold mb-1 group-hover:text-orange-300">Actualizada</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: Costo Calc + Plataformas</span>
-                        </button>
-                        <button type="button" onclick="procesarSolicitud('inventario')" class="p-4 bg-dark-800 border border-dark-700 hover:border-teal-500 hover:bg-dark-700 rounded-xl text-left group transition">
-                            <span class="block text-teal-400 font-bold mb-1 group-hover:text-teal-300">Inventario Bellaroma</span>
-                            <span class="block text-[10px] text-gray-500 uppercase">Estandar: PG + Lista3</span>
-                        </button>
-                    </div>
+            <div class="mb-10">
+                <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <span class="bg-emerald-600 w-2 h-6 rounded mr-2"></span> Listas Predeterminadas
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <button type="button" onclick="procesarSolicitud('resurtido')" class="p-4 bg-dark-800 border border-dark-700 hover:border-blue-500 hover:bg-dark-700 rounded-xl text-left group transition">
+                        <span class="block text-blue-400 font-bold mb-1 group-hover:text-blue-300">Lista de Resurtido</span>
+                        <span class="block text-[10px] text-gray-500 uppercase">Estandar: PG, Plataformas, Lista3</span>
+                    </button>
+                    <button type="button" onclick="procesarSolicitud('costos')" class="p-4 bg-dark-800 border border-dark-700 hover:border-purple-500 hover:bg-dark-700 rounded-xl text-left group transition">
+                        <span class="block text-purple-400 font-bold mb-1 group-hover:text-purple-300">Lista de Costos</span>
+                        <span class="block text-[10px] text-gray-500 uppercase">Estandar: Costos Wizerp</span>
+                    </button>
+                    <button type="button" onclick="procesarSolicitud('actualizada')" class="p-4 bg-dark-800 border border-dark-700 hover:border-orange-500 hover:bg-dark-700 rounded-xl text-left group transition">
+                        <span class="block text-orange-400 font-bold mb-1 group-hover:text-orange-300">Actualizada</span>
+                        <span class="block text-[10px] text-gray-500 uppercase">Estandar: Costo Calc + Plataformas</span>
+                    </button>
+                    <button type="button" onclick="procesarSolicitud('inventario')" class="p-4 bg-dark-800 border border-dark-700 hover:border-teal-500 hover:bg-dark-700 rounded-xl text-left group transition">
+                        <span class="block text-teal-400 font-bold mb-1 group-hover:text-teal-300">Inventario Bellaroma</span>
+                        <span class="block text-[10px] text-gray-500 uppercase">Estandar: PG + Lista3</span>
+                    </button>
                 </div>
+            </div>
 
-                <div>
-                    <h2 class="text-xl font-bold text-white mb-4 flex items-center">
-                        <span class="bg-yellow-600 w-2 h-6 rounded mr-2"></span> Procesar Lista Clientes
-                    </h2>
-                    <div class="bg-dark-800 border border-dark-700 p-5 rounded-xl">
-                        <p class="text-gray-400 text-sm mb-4">
-                            Genera una lista limpia de IDs y Nombres. Limpia y corrige el archivo CSV.
-                        </p>
-                        <button type="button" onclick="procesarSolicitud('clientes')" class="w-full py-3 bg-yellow-600/20 border border-yellow-600/50 text-yellow-400 hover:bg-yellow-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
+            <div class="mb-10">
+                <h2 class="text-xl font-bold text-white mb-4 flex items-center">
+                    <span class="bg-yellow-600 w-2 h-6 rounded mr-2"></span> Procesar Lista Clientes
+                </h2>
+
+                <div class="bg-dark-800 border border-dark-700 p-5 rounded-xl flex flex-col md:flex-row gap-6 items-center shadow-lg">
+
+                    <div class="w-full md:w-1/3">
+                        <p class="text-gray-400 text-sm mb-4">Limpia, corrige codificación y formatea tu base de datos de clientes.</p>
+                        <label class="flex items-center space-x-2 cursor-pointer group">
+                            <input type="checkbox" id="check-incluir-sin-id" checked class="accent-yellow-500 w-4 h-4 rounded bg-dark-900 border-dark-700">
+                            <span class="text-sm font-bold text-gray-300 group-hover:text-white transition">Incluir clientes sin ID (Prospectos)</span>
+                        </label>
+                    </div>
+
+                    <div class="w-full md:w-1/3 border-t md:border-t-0 md:border-l border-dark-700 pt-4 md:pt-0 md:pl-6">
+                        <div class="flex justify-between items-end mb-2">
+                            <span class="block text-xs font-bold text-gray-500">Columnas a exportar:</span>
+                            <button type="button" onclick="toggleColumnasClientes(this)" class="text-[10px] text-yellow-500 hover:text-yellow-400 font-bold underline transition">
+                                Seleccionar Todas
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto custom-scroll pr-1">
+                            @foreach(['ID', 'NOMBRE', 'DIRECCION_FISCAL', 'COLONIA_FISCAL', 'MUNICIPIO_FISCAL', 'CP_FISCAL', 'ESTADO_FISCAL', 'PAIS_FISCAL', 'DIRECCION_CONTACTO', 'COLONIA_CONTACTO', 'MUNICIPIO_CONTACTO', 'ESTADO_CONTACTO', 'PAIS_CONTACTO', 'CP_CONTACTO', 'RFC', 'TELEFONO', 'EMAIL', 'LIMITE_CREDITO', 'CREDITO_DISPONIBLE', 'DIAS_CHEQUE_POSTFECHADO', 'DIAS_VENCIMIENTO', 'PARTE_RELACIONAL', 'REGIMEN_FISCAL', 'USO_DE_CFDI', 'GRUPO_DESCUENTO', 'VARIABLE_CONTABLE', 'TAGS', 'TIPO'] as $col)
+                            <label class="flex items-center space-x-2 bg-dark-900 p-1.5 rounded border border-dark-700 cursor-pointer hover:border-yellow-500/50 transition select-none">
+                                <input type="checkbox" value="{{ $col }}" class="check-col-cliente accent-yellow-500 w-3 h-3" {{ in_array($col, ['ID', 'NOMBRE']) ? 'checked' : '' }}>
+                                <span class="text-[10px] text-gray-400">{{ str_replace('_', ' ', $col) }}</span>
+                            </label>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    <div class="w-full md:w-1/3 md:mt-0">
+                        <button type="button" onclick="procesarSolicitud('clientes')" class="w-full py-4 bg-yellow-600/20 border border-yellow-600/50 text-yellow-400 hover:bg-yellow-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                                 <path fill-rule="evenodd" d="M5 2a1 1 0 011 1v1h1a1 1 0 010 2H6v1a1 1 0 01-2 0V6H3a1 1 0 010-2h1V3a1 1 0 011-1zm0 10a1 1 0 011 1v1h1a1 1 0 110 2H6v1a1 1 0 11-2 0v-1H3a1 1 0 110-2h1v-1a1 1 0 011-1zM12 2a1 1 0 01.967.744L14.146 7.2 17.5 9.134a1 1 0 010 1.732l-3.354 1.935-1.18 4.455a1 1 0 01-1.933 0L9.854 12.8 6.5 10.866a1 1 0 010-1.732l3.354-1.935 1.18-4.455A1 1 0 0112 2z" clip-rule="evenodd" />
                             </svg>
                             Procesar Lista Clientes
                         </button>
                     </div>
+
                 </div>
             </div>
 
@@ -297,7 +322,9 @@
 
                     <div class="w-full md:w-1/3 md:mt-6">
                         <button type="button" onclick="procesarSolicitud('gastos')" class="w-full py-3 bg-green-600/20 border border-green-600/50 text-dark-400 hover:bg-green-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
                             Generar y Descargar
                         </button>
                     </div>
@@ -318,7 +345,9 @@
 
                     <div class="w-full md:w-1/3 md:mt-0">
                         <button type="button" onclick="procesarSolicitud('transacciones')" class="w-full py-4 bg-indigo-600/20 border border-indigo-600/50 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg font-bold transition flex justify-center items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" /></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                            </svg>
                             Limpiar Transacciones
                         </button>
                     </div>

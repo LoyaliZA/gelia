@@ -130,24 +130,102 @@ class GeliaController extends Controller
         $fecha = date('d-m-y');
 
         // ---------------------------------------------------------
-        // MODO 1: LIMPIEZA DE CLIENTES
+        // MODO 1: LIMPIEZA DE CLIENTES (Dinámico y Sanitizado)
         // ---------------------------------------------------------
         if ($tipoLista === 'clientes') {
-            $validator = Validator::make($request->all(), ['clientes' => 'required|file']);
-            if ($validator->fails()) return response()->json(['errors' => $validator->errors()], 422);
+            // 1. Validación de seguridad e inputs
+            $validator = Validator::make($request->all(), [
+                'clientes' => 'required|file|mimes:csv,txt',
+                'columnas_clientes' => 'nullable|string', // Ej: "ID,NOMBRE,RFC,TELEFONO"
+                'incluir_sin_id' => 'nullable|boolean'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            // 2. Configuración de parámetros
+            $columnasSeleccionadas = $request->input('columnas_clientes') 
+                ? explode(',', $request->input('columnas_clientes')) 
+                : ['ID', 'NOMBRE']; // Por defecto
+                
+            $incluirSinId = $request->boolean('incluir_sin_id', true); // Por defecto incluimos todos según tu requerimiento
 
             $listaClientes = [];
-            $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaClientes) {
-                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaClientes) {
+
+            // 3. Procesamiento seguro
+            $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaClientes, $columnasSeleccionadas, $incluirSinId) {
+                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaClientes, $columnasSeleccionadas, $incluirSinId) {
+                    
                     $idRaw = $linea[0] ?? '';
-                    $nombreRaw = $linea[1] ?? '';
-                    $id = ltrim(trim((string)$idRaw), '0'); 
-                    $nombre = trim((string)$nombreRaw);
-                    if ($id === '' || strtolower($id) === 'id' || strtolower($id) === 'clientes') return;
-                    $listaClientes[] = ['ID' => $id, 'NOMBRE' => $nombre];
+                    
+                    // Omitir la primera línea inútil del CSV y la línea de encabezados
+                    if ($idRaw === 'Clientes' || $idRaw === 'ID' || $idRaw === '') {
+                        if (!$incluirSinId || $idRaw === 'Clientes' || $idRaw === 'ID') return;
+                    }
+
+                    $id = ltrim(trim((string)$idRaw), '0');
+
+                    // Filtro para excluir los que no tienen ID (si el usuario así lo decide)
+                    if (!$incluirSinId && $id === '') {
+                        return;
+                    }
+
+                    // Función interna para limpieza de codificación y espacios
+                    $limpiarTexto = function ($texto) {
+                        $texto = trim(preg_replace('/\s+/', ' ', (string)($texto ?? '')));
+                        // Detectamos y reparamos codificación ISO a UTF-8 (arregla acentos y Ñ)
+                        return mb_check_encoding($texto, 'UTF-8') ? $texto : mb_convert_encoding($texto, 'UTF-8', 'ISO-8859-1');
+                    };
+
+                    // Mapeo maestro basado en el índice real de tu CSV
+                    $filaCompleta = [
+                        'ID' => $id,
+                        'NOMBRE' => $limpiarTexto($linea[1] ?? ''),
+                        'DIRECCION_FISCAL' => $limpiarTexto($linea[2] ?? ''),
+                        'COLONIA_FISCAL' => $limpiarTexto($linea[3] ?? ''),
+                        'MUNICIPIO_FISCAL' => $limpiarTexto($linea[4] ?? ''),
+                        'CP_FISCAL' => $limpiarTexto($linea[5] ?? ''),
+                        'ESTADO_FISCAL' => $limpiarTexto($linea[6] ?? ''),
+                        'PAIS_FISCAL' => $limpiarTexto($linea[7] ?? ''),
+                        'DIRECCION_CONTACTO' => $limpiarTexto($linea[8] ?? ''),
+                        'COLONIA_CONTACTO' => $limpiarTexto($linea[9] ?? ''),
+                        'MUNICIPIO_CONTACTO' => $limpiarTexto($linea[10] ?? ''),
+                        'ESTADO_CONTACTO' => $limpiarTexto($linea[11] ?? ''),
+                        'PAIS_CONTACTO' => $limpiarTexto($linea[12] ?? ''),
+                        'CP_CONTACTO' => $limpiarTexto($linea[13] ?? ''),
+                        'RFC' => $limpiarTexto($linea[14] ?? ''),
+                        'TELEFONO' => $limpiarTexto($linea[15] ?? ''),
+                        'EMAIL' => $limpiarTexto($linea[16] ?? ''),
+                        'LIMITE_CREDITO' => (float)$limpiarTexto($linea[17] ?? '0'),
+                        'CREDITO_DISPONIBLE' => (float)$limpiarTexto($linea[18] ?? '0'),
+                        'DIAS_CHEQUE_POSTFECHADO' => (int)$limpiarTexto($linea[19] ?? '0'),
+                        'DIAS_VENCIMIENTO' => (int)$limpiarTexto($linea[20] ?? '0'),
+                        'PARTE_RELACIONAL' => (int)$limpiarTexto($linea[21] ?? '0'),
+                        'REGIMEN_FISCAL' => $limpiarTexto($linea[22] ?? ''),
+                        'USO_DE_CFDI' => $limpiarTexto($linea[23] ?? ''),
+                        'GRUPO_DESCUENTO' => $limpiarTexto($linea[24] ?? ''),
+                        'VARIABLE_CONTABLE' => $limpiarTexto($linea[25] ?? ''),
+                        'TAGS' => $limpiarTexto($linea[26] ?? ''),
+                        'TIPO' => $limpiarTexto($linea[27] ?? '')
+                    ];
+
+                    // Construcción dinámica del array a exportar
+                    $filaFinal = [];
+                    foreach ($columnasSeleccionadas as $col) {
+                        if (array_key_exists($col, $filaCompleta)) {
+                            $filaFinal[$col] = $filaCompleta[$col];
+                        }
+                    }
+
+                    if (!empty($filaFinal)) {
+                        $listaClientes[] = $filaFinal;
+                    }
                 });
             });
-            return (new FastExcel(collect($listaClientes)))->download("CLIENTES-LIMPIOS-$fecha.xlsx");
+
+            // 4. Retorno del archivo generado
+            return (new FastExcel(collect($listaClientes)))->download("CLIENTES-PERSONALIZADO-$fecha.xlsx");
         }
 
         // ---------------------------------------------------------
