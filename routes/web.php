@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GeliaController;
-use App\Http\Controllers\SefeController;
+//use App\Http\Controllers\SefeController;
 
 // 1. Ruta Principal (Carga la vista y las listas)
 Route::get('/', [GeliaController::class, 'index'])->name('gelia.index');
