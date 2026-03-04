@@ -9,7 +9,8 @@ export default defineConfig({
             input: [
                 'resources/css/app.css', 
                 'resources/js/app.js', 
-                'resources/js/bellaroma.js' // <-- NUEVO SCRIPT COMPILABLE
+                'resources/js/bellaroma.js', // <-- NUEVO SCRIPT COMPILABLE
+                'resources/js/aromas.js', // <-- NUEVO SCRIPT COMPILABLE
             ],
             refresh: true,
         }),

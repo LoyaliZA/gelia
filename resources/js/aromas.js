@@ -1,5 +1,3 @@
-import './bootstrap';
-
 let ordenSeleccionado = [];
 let ordenCreacion = [];
 
@@ -10,41 +8,20 @@ const camposPorArchivo = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    verificarArchivos();
+    // Escuchar cambios en los inputs para habilitar botones
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+        input.addEventListener('change', window.verificarArchivos);
+    });
+    
+    window.verificarArchivos();
+    
     const formCrear = document.getElementById('form-crear-lista');
     if (formCrear) formCrear.addEventListener('submit', guardarNuevaLista);
-
-    // Drag and Drop
-    const dropZones = document.querySelectorAll('.drop-zone');
-    dropZones.forEach(zone => {
-        zone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            zone.classList.add('border-dashed', 'bg-dark-700', 'scale-[1.02]');
-            if (zone.id === 'card-existencias') zone.classList.add('border-blue-700');
-            if (zone.id === 'card-precios') zone.classList.add('border-emerald-500');
-            if (zone.id === 'card-costos') zone.classList.add('border-purple-500');
-            if (zone.id === 'card-clientes') zone.classList.add('border-yellow-500');
-            if (zone.id === 'card-gastos') zone.classList.add('border-green-500');
-            if (zone.id === 'card-transacciones') zone.classList.add('border-orange-500');
-        });
-        zone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            zone.classList.remove('border-dashed', 'bg-dark-700', 'scale-[1.02]', 'border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-yellow-500');
-        });
-        zone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            zone.classList.remove('border-dashed', 'bg-dark-700', 'scale-[1.02]', 'border-blue-500', 'border-emerald-500', 'border-purple-500', 'border-yellow-500');
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                const input = zone.querySelector('input[type="file"]');
-                if (input) {
-                    input.files = e.dataTransfer.files;
-                    verificarArchivos();
-                }
-            }
-        });
-    });
 });
 
+// ==========================================
+// MODALES Y EDICIÓN DE LISTAS
+// ==========================================
 window.toggleModal = function (show) {
     const modal = document.getElementById('modal-nueva-lista');
     if (show) modal.classList.remove('hidden');
@@ -105,6 +82,9 @@ window.abrirModalEdicion = function (event, id) {
     toggleModal(true);
 }
 
+// ==========================================
+// ORDENAMIENTO DE COLUMNAS
+// ==========================================
 window.actualizarOrdenCreacion = function (checkbox) {
     const valor = checkbox.value;
     const badge = document.getElementById('badge-creacion-' + valor);
@@ -122,49 +102,6 @@ window.actualizarOrdenCreacion = function (checkbox) {
     document.getElementById('input-columnas-exportar').value = ordenCreacion.join(',');
 }
 
-window.guardarNuevaLista = async function (e) {
-    e.preventDefault();
-    if (ordenCreacion.length === 0) { alert("Debes seleccionar al menos una columna para exportar."); return; }
-
-    const form = e.target;
-    const formData = new FormData(form);
-    const idLista = document.getElementById('lista-id').value;
-    const url = idLista ? window.GeliaConfig.routes.actualizar.replace(':id', idLista) : window.GeliaConfig.routes.guardar;
-
-    mostrarCarga(idLista ? "Actualizando configuración..." : "Guardando configuración...");
-
-    try {
-        const response = await fetch(url, {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                'Accept': 'application/json'
-            }
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            if (data.errors) {
-                let msg = Object.values(data.errors).flat().join('\n');
-                alert("Error de validación:\n" + msg);
-            } else {
-                alert("Error: " + (data.message || "Error desconocido"));
-            }
-        } else {
-            alert(idLista ? "Lista actualizada con éxito." : "Lista creada con éxito.");
-            window.location.reload();
-        }
-
-    } catch (error) {
-        console.error(error);
-        alert("Error de red: " + error.message);
-    } finally {
-        ocultarCarga();
-    }
-}
-
 window.actualizarOrden = function (checkbox) {
     const valor = checkbox.value;
     const badge = document.getElementById('badge-' + valor);
@@ -179,14 +116,17 @@ window.actualizarOrden = function (checkbox) {
     }
 }
 
+// ==========================================
+// VALIDACIONES Y HABILITACIÓN DE SECCIONES
+// ==========================================
 window.verificarArchivos = function () {
     const fileExistencias = document.getElementById('file-existencias');
     if (!fileExistencias) return;
 
     const inputs = {
-        'existencias': fileExistencias.value !== "",
-        'precios': document.getElementById('file-precios').value !== "",
-        'costos': document.getElementById('file-costos').value !== ""
+        'existencias': fileExistencias.files.length > 0,
+        'precios': document.getElementById('file-precios').files.length > 0,
+        'costos': document.getElementById('file-costos').files.length > 0
     };
 
     for (const [archivo, campos] of Object.entries(camposPorArchivo)) {
@@ -213,45 +153,96 @@ window.verificarArchivos = function () {
     }
 }
 
+window.toggleColumnasClientes = function (btn) {
+    const checks = document.querySelectorAll('.check-col-cliente');
+    const isSelectingAll = btn.innerText.trim() === 'Seleccionar Todas';
+    checks.forEach(c => c.checked = isSelectingAll);
+    btn.innerText = isSelectingAll ? 'Desmarcar Todas' : 'Seleccionar Todas';
+}
+
+// ==========================================
+// PETICIONES AL BACKEND (API REST)
+// ==========================================
+window.guardarNuevaLista = async function (e) {
+    e.preventDefault();
+    if (ordenCreacion.length === 0) { window.mostrarToast("Debes seleccionar al menos una columna.", "red"); return; }
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const idLista = document.getElementById('lista-id').value;
+    const url = idLista ? window.GeliaConfig.routes.actualizar.replace(':id', idLista) : window.GeliaConfig.routes.guardar;
+
+    window.mostrarCarga(idLista ? "Actualizando configuración..." : "Guardando configuración...");
+
+    try {
+        const response = await fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'Accept': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            if (data.errors) {
+                let msg = Object.values(data.errors).flat().join('\n');
+                window.mostrarToast("Error de validación:\n" + msg, "red");
+            } else {
+                window.mostrarToast("Error: " + (data.message || "Error desconocido"), "red");
+            }
+        } else {
+            window.mostrarToast(idLista ? "Lista actualizada con éxito." : "Lista creada con éxito.", "green");
+            setTimeout(() => window.location.reload(), 1000);
+        }
+
+    } catch (error) {
+        window.mostrarToast("Error de red: " + error.message, "red");
+    } finally {
+        window.ocultarCarga();
+    }
+}
+
 window.procesarSolicitud = async function (tipo) {
     const fileExistencias = document.getElementById('file-existencias');
-    const tieneExistencias = fileExistencias && fileExistencias.value !== "";
-    const tienePrecios = document.getElementById('file-precios').value !== "";
-    const tieneCostos = document.getElementById('file-costos').value !== "";
+    const tieneExistencias = fileExistencias && fileExistencias.files.length > 0;
+    const tienePrecios = document.getElementById('file-precios').files.length > 0;
+    const tieneCostos = document.getElementById('file-costos').files.length > 0;
 
     if (tipo === 'clientes') {
-        const fileClientes = document.getElementById('file-clientes').value;
-        if (!fileClientes) { mostrarToast("Sube el archivo CSV de Clientes", "red"); return; }
-        // NUEVA VALIDACIÓN: Asegurar que al menos seleccionó 1 columna
+        const fileClientes = document.getElementById('file-clientes').files.length > 0;
+        if (!fileClientes) { window.mostrarToast("Sube el archivo CSV de Clientes", "red"); return; }
         const checks = document.querySelectorAll('.check-col-cliente:checked');
-        if (checks.length === 0) { mostrarToast("Selecciona al menos una columna de clientes", "red"); return; }
+        if (checks.length === 0) { window.mostrarToast("Selecciona al menos una columna de clientes", "red"); return; }
     }
     else if (tipo === 'gastos') {
-        const fileGastos = document.getElementById('file-gastos').value;
-        if (!fileGastos) { mostrarToast("⚠️ Sube el archivo de Gastos Comprobables", "red"); return; }
+        const fileGastos = document.getElementById('file-gastos').files.length > 0;
+        if (!fileGastos) { window.mostrarToast("⚠️ Sube el archivo de Gastos Comprobables", "red"); return; }
     }
     else if (tipo === 'transacciones') {
-        const fileTransacciones = document.getElementById('file-transacciones').value;
-        if (!fileTransacciones) { mostrarToast("⚠️ Sube el archivo de Transacciones Bancarias", "red"); return; }
+        const fileTransacciones = document.getElementById('file-transacciones').files.length > 0;
+        if (!fileTransacciones) { window.mostrarToast("⚠️ Sube el archivo de Transacciones Bancarias", "red"); return; }
     }
     else if (!isNaN(tipo)) {
-        if (!tieneExistencias) { mostrarToast("Existencias es obligatorio.", "red"); return; }
+        if (!tieneExistencias) { window.mostrarToast("Existencias es obligatorio.", "red"); return; }
         if (window.GeliaConfig && window.GeliaConfig.customLists) {
             const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
             if (listaConfig) {
                 const reqs = listaConfig.archivos_requeridos || [];
-                if (reqs.includes('precios') && !tienePrecios) { mostrarToast(`Requiere PRECIOS.`, "red"); return; }
-                if (reqs.includes('costos') && !tieneCostos) { mostrarToast(`Requiere COSTOS.`, "red"); return; }
+                if (reqs.includes('precios') && !tienePrecios) { window.mostrarToast(`Requiere PRECIOS.`, "red"); return; }
+                if (reqs.includes('costos') && !tieneCostos) { window.mostrarToast(`Requiere COSTOS.`, "red"); return; }
             }
         }
     }
     else {
-        if (!tieneExistencias) { mostrarToast("Primero sube Existencias", "red"); return; }
+        if (!tieneExistencias) { window.mostrarToast("Primero sube Existencias", "red"); return; }
         if ((tipo === 'resurtido' || tipo === 'actualizada' || tipo === 'inventario') && !tienePrecios) {
-            mostrarToast("Esta lista requiere: Existencias + Precios", "red"); return;
+            window.mostrarToast("Esta lista requiere: Existencias + Precios", "red"); return;
         }
         if (tipo === 'costos' && !tieneCostos) {
-            mostrarToast("Esta lista requiere: Existencias + Costos", "red"); return;
+            window.mostrarToast("Esta lista requiere: Existencias + Costos", "red"); return;
         }
     }
 
@@ -272,7 +263,7 @@ window.procesarSolicitud = async function (tipo) {
     else {
         columnas = ordenSeleccionado;
         nombreTipo = "Lista Personalizada";
-        if (columnas.length === 0) { mostrarToast("Error: Selecciona columnas.", "red"); return; }
+        if (columnas.length === 0) { window.mostrarToast("Error: Selecciona columnas.", "red"); return; }
     }
 
     const form = document.getElementById('form-principal');
@@ -281,16 +272,14 @@ window.procesarSolicitud = async function (tipo) {
     if (columnas.length > 0) formData.append('orden_final', columnas.join(','));
     formData.append('tipo_lista', tipo);
 
-    // NUEVO BLOQUE: Empaquetar datos específicos de limpieza de clientes
     if (tipo === 'clientes') {
         const checks = document.querySelectorAll('.check-col-cliente:checked');
         const cols = Array.from(checks).map(c => c.value);
         formData.append('columnas_clientes', cols.join(','));
-        // Forzamos el envío booleano para sobrescribir el valor de FormData
         formData.set('incluir_sin_id', document.getElementById('check-incluir-sin-id').checked ? '1' : '0');
     }
 
-    mostrarCarga(`Generando: ${nombreTipo}...`);
+    window.mostrarCarga(`Generando: ${nombreTipo}...`);
     document.getElementById('alertas').innerHTML = '';
 
     try {
@@ -307,9 +296,9 @@ window.procesarSolicitud = async function (tipo) {
                 let html = `<ul class='list-disc ml-5'>`;
                 Object.values(data.errors).forEach(err => html += `<li>${err}</li>`);
                 html += `</ul>`;
-                mostrarError(html);
+                window.mostrarError(html);
             } else { throw new Error(data.error || 'Error en el servidor'); }
-            ocultarCarga(); return;
+            window.ocultarCarga(); return;
         }
 
         const blob = await response.blob();
@@ -329,50 +318,26 @@ window.procesarSolicitud = async function (tipo) {
         a.click();
         a.remove();
 
-        ocultarCarga();
-        mostrarToast("Archivo Generado Exitosamente!", "green");
+        window.ocultarCarga();
+        window.mostrarToast("Archivo Generado Exitosamente!", "green");
 
     } catch (error) {
-        console.error(error);
-        ocultarCarga();
-        mostrarToast("Error: " + error.message, "red");
+        window.ocultarCarga();
+        window.mostrarToast("Error: " + error.message, "red");
     }
 }
 
 window.eliminarLista = async function (event, id) {
     event.stopPropagation();
     if (!confirm("Eliminar esta lista personalizada?")) return;
-    mostrarCarga("Eliminando...");
+    window.mostrarCarga("Eliminando...");
     try {
         const urlEliminar = window.GeliaConfig.routes.eliminar.replace(':id', id);
         const response = await fetch(urlEliminar, {
             method: 'DELETE',
             headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value, 'Accept': 'application/json' }
         });
-        if (response.ok) { alert("Eliminada."); window.location.reload(); } else { alert("Error al eliminar."); }
-    } catch (error) { console.error(error); alert("Error de red."); } finally { ocultarCarga(); }
-}
-
-window.mostrarCarga = function (m) { document.getElementById('overlay-carga').classList.remove('hidden'); document.getElementById('texto-carga').innerText = m; }
-window.ocultarCarga = function () { document.getElementById('overlay-carga').classList.add('hidden'); }
-window.mostrarToast = function (m, c) {
-    const t = document.getElementById('toast');
-    const tm = document.getElementById('toast-msg');
-    t.className = `fixed top-5 right-5 z-50 px-6 py-4 rounded-lg shadow-xl text-white font-bold flex items-center transform transition-all duration-300 ${c === 'red' ? 'bg-red-600' : 'bg-emerald-600'}`;
-    tm.innerText = m;
-    t.classList.remove('hidden', 'toast-enter'); t.classList.add('toast-enter-active');
-    setTimeout(() => { t.classList.add('hidden'); }, 4000);
-}
-window.mostrarError = function (h) { document.getElementById('alertas').innerHTML = `<div class="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-lg mb-6">${h}</div>`; }
-
-// Función para marcar/desmarcar masivamente las columnas de clientes
-window.toggleColumnasClientes = function (btn) {
-    const checks = document.querySelectorAll('.check-col-cliente');
-    const isSelectingAll = btn.innerText.trim() === 'Seleccionar Todas';
-    
-    // Cambiamos el estado de todos los checkboxes
-    checks.forEach(c => c.checked = isSelectingAll);
-    
-    // Alternamos el texto del botón
-    btn.innerText = isSelectingAll ? 'Desmarcar Todas' : 'Seleccionar Todas';
+        if (response.ok) { window.mostrarToast("Eliminada.", "green"); setTimeout(() => window.location.reload(), 1000); } 
+        else { window.mostrarToast("Error al eliminar.", "red"); }
+    } catch (error) { window.mostrarToast("Error de red.", "red"); } finally { window.ocultarCarga(); }
 }

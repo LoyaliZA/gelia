@@ -1,58 +1,32 @@
 @import "tailwindcss";
 
-/* Scrollbar Personalizado */
+/* Scrollbar Personalizado (Estética más limpia) */
 ::-webkit-scrollbar {
-    width: 8px;
-}
-
-::-webkit-scrollbar-track {
-    background: #0d1117;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #30363d;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #58a6ff;
-}
-
-/* Scrollbar especifico para el modal */
-.custom-scroll::-webkit-scrollbar {
     width: 6px;
 }
-
-.custom-scroll::-webkit-scrollbar-track {
-    background: #161b22;
+::-webkit-scrollbar-track {
+    background: var(--color-dark-900);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--color-dark-700);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-dark-600);
 }
 
-.custom-scroll::-webkit-scrollbar-thumb {
-    background: #30363d;
-    border-radius: 3px;
-}
-
-/* Animaciones */
+/* Animaciones Globales */
 .toast-enter {
     transform: translateY(-20px);
     opacity: 0;
 }
-
 .toast-enter-active {
     transform: translateY(0);
     opacity: 1;
     transition: all 0.3s ease-out;
 }
 
-/* Visual para bloqueados */
-.disabled-option {
-    opacity: 0.3;
-    pointer-events: none;
-    filter: grayscale(100%);
-    border-color: #374151;
-}
-
-/* Ocultar el triangulo por defecto de details en Safari/Chrome viejo */
+/* Ocultar el triangulo de <details> nativo */
 details>summary::-webkit-details-marker {
     display: none;
 }
@@ -63,11 +37,23 @@ details>summary::-webkit-details-marker {
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
     
-    /* G.E.L.I.A. Custom Colors */
-    --color-dark-900: #0d1117;
-    --color-dark-800: #161b22;
-    --color-dark-700: #21262d;
-    --color-dark-text: #c9d1d9;
+    /* Paleta Base Corporativa (Tonos Pizarra/Slate elegantes) */
+    --color-dark-900: #0f172a; /* Fondo principal */
+    --color-dark-800: #1e293b; /* Contenedores y tarjetas */
+    --color-dark-700: #334155; /* Bordes sutiles */
+    --color-dark-600: #475569; /* Hover en bordes */
+    --color-dark-text: #f8fafc; /* Texto principal brillante pero no cegador */
+    --color-dark-muted: #94a3b8; /* Texto secundario */
+
+    /* Departamento: Aromas (Tonos Esmeralda/Salvia) */
+    --color-aromas-dark: #064e3b;
+    --color-aromas-main: #10b981;
+    --color-aromas-light: #34d399;
+
+    /* Departamento: Bellaroma (Tonos Vino/Dorado) */
+    --color-bella-dark: #4c0519;
+    --color-bella-main: #e11d48;
+    --color-bella-light: #fb7185;
 }

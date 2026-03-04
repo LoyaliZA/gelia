@@ -3,22 +3,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const fileExistencias = document.getElementById('file-existencias');
     const filePrecios = document.getElementById('file-precios');
 
-    // Usamos las dropzones con la estética de app.js
-    setupDropzone('drop-existencias', fileExistencias, 'nombre-existencias', 'border-blue-700');
-    setupDropzone('drop-precios', filePrecios, 'nombre-precios', 'border-emerald-500');
-
     if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            // Verificamos que los inputs tengan archivos (sin importar si fue por click o drag&drop)
             if (!fileExistencias.files.length || !filePrecios.files.length) {
-                // Usamos el Toast global de app.js (color rojo)
                 window.mostrarToast('Sube ambos archivos primero', 'red');
                 return;
             }
 
             const formData = new FormData(form);
-            // Usamos el Overlay de carga global de app.js
             window.mostrarCarga("Cruzando datos y protegiendo celdas...");
 
             try {
@@ -34,7 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `PLANTILLA-BELLAROMA-${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`;
+                
+                // Formateamos la fecha para el nombre del archivo
+                const fecha = new Date().toLocaleDateString('es-MX', {day: '2-digit', month: '2-digit', year: '2-digit'}).replace(/\//g, '-');
+                a.download = `PLANTILLA-BELLAROMA-${fecha}.xlsx`;
+                
                 document.body.appendChild(a);
                 a.click();
                 a.remove();
@@ -46,33 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 window.ocultarCarga();
             }
-        });
-    }
-
-    function setupDropzone(id, input, nameId, colorClass) {
-        const zone = document.getElementById(id);
-        const nameDisplay = document.getElementById(nameId);
-
-        zone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            zone.classList.add('scale-[1.02]', 'bg-dark-700', colorClass);
-        });
-
-        zone.addEventListener('dragleave', () => {
-            zone.classList.remove('scale-[1.02]', 'bg-dark-700', colorClass);
-        });
-
-        zone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            zone.classList.remove('scale-[1.02]', 'bg-dark-700', colorClass);
-            if (e.dataTransfer.files.length) {
-                input.files = e.dataTransfer.files;
-                nameDisplay.textContent = e.dataTransfer.files[0].name;
-            }
-        });
-
-        input.addEventListener('change', () => {
-            if (input.files.length) nameDisplay.textContent = input.files[0].name;
         });
     }
 });
