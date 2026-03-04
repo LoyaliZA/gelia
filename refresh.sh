@@ -1,4 +1,5 @@
 #!/bin/bash
+#./refresh.sh
 # refresh.sh - Script de actualización rápida para producción GELIA
 
 echo "🚀 Iniciando actualización del sistema GELIA..."
