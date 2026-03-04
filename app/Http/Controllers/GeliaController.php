@@ -229,6 +229,75 @@ class GeliaController extends Controller
         }
 
         // ---------------------------------------------------------
+        // MODO 1.2: AUDITORÍA DE TAGS (CLIENTES SIN DESCUENTO)
+        // Lógica de Mayra: Filtrar clientes sin descuento pero con Tag,
+        // ordenarlos por ID y vaciar la columna Tag para "planchar" Wizerp.
+        // ---------------------------------------------------------
+        if ($tipoLista === 'clientes_auditoria_tags') {
+            // 1. Validación de seguridad
+            $validator = Validator::make($request->all(), [
+                'clientes' => 'required|file|mimes:csv,txt'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $listaAuditoria = [];
+
+            // 2. Procesamiento seguro y en memoria
+            $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaAuditoria) {
+                (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaAuditoria) {
+                    
+                    $idRaw = $linea[0] ?? '';
+                    
+                    // Omitir la primera línea inútil del CSV, encabezados y filas vacías
+                    if ($idRaw === 'Clientes' || $idRaw === 'ID' || $idRaw === '') {
+                        return;
+                    }
+
+                    $id = ltrim(trim((string)$idRaw), '0');
+
+                    // Descartar si el ID viene completamente vacío
+                    if ($id === '') {
+                        return;
+                    }
+
+                    // Función interna para limpieza de codificación y espacios
+                    $limpiarTexto = function ($texto) {
+                        $texto = trim(preg_replace('/\s+/', ' ', (string)($texto ?? '')));
+                        return mb_check_encoding($texto, 'UTF-8') ? $texto : mb_convert_encoding($texto, 'UTF-8', 'ISO-8859-1');
+                    };
+
+                    // Extraemos solo lo necesario según los índices de tu archivo
+                    // A(0)=ID, B(1)=NOMBRE, Y(24)=GRUPO_DESCUENTO, AA(26)=TAGS
+                    $nombre = $limpiarTexto($linea[1] ?? '');
+                    $grupoDescuento = $limpiarTexto($linea[24] ?? '');
+                    $tags = $limpiarTexto($linea[26] ?? '');
+
+                    // 3. LÓGICA DE FILTRADO NÚCLEO
+                    // Filtrar en grupo de descuentos las vacías AND Filtrar en tags deseleccionando vacías
+                    if ($grupoDescuento === '' && $tags !== '') {
+                        $listaAuditoria[] = [
+                            'ID' => $id,
+                            'NOMBRE' => $nombre,
+                            'GRUPO_DESCUENTO' => $grupoDescuento,
+                            'TAGS' => '' // <-- Vaciamos el tag a propósito para que Wizerp lo elimine al importar
+                        ];
+                    }
+                });
+            });
+
+            // 4. ORDENAMIENTO DE LA 'A' A LA 'Z' POR ID (Numérico)
+            usort($listaAuditoria, function ($a, $b) {
+                return (int)$a['ID'] <=> (int)$b['ID'];
+            });
+
+            // 5. Retorno del archivo generado
+            return (new FastExcel(collect($listaAuditoria)))->download("AUDITORIA-TAGS-$fecha.xlsx");
+        }
+
+        // ---------------------------------------------------------
         // MODO 1.5: GASTOS COMPROBABLES
         // ---------------------------------------------------------
         if ($tipoLista === 'gastos') {

@@ -211,11 +211,16 @@ window.procesarSolicitud = async function (tipo) {
     const tienePrecios = document.getElementById('file-precios').files.length > 0;
     const tieneCostos = document.getElementById('file-costos').files.length > 0;
 
-    if (tipo === 'clientes') {
+    // MODIFICACIÓN 1: Aceptamos ambas banderas relacionadas a clientes
+    if (tipo === 'clientes' || tipo === 'clientes_auditoria_tags') {
         const fileClientes = document.getElementById('file-clientes').files.length > 0;
         if (!fileClientes) { window.mostrarToast("Sube el archivo CSV de Clientes", "red"); return; }
-        const checks = document.querySelectorAll('.check-col-cliente:checked');
-        if (checks.length === 0) { window.mostrarToast("Selecciona al menos una columna de clientes", "red"); return; }
+        
+        // Solo exigimos seleccionar columnas si es el modo de clientes normal
+        if (tipo === 'clientes') {
+            const checks = document.querySelectorAll('.check-col-cliente:checked');
+            if (checks.length === 0) { window.mostrarToast("Selecciona al menos una columna de clientes", "red"); return; }
+        }
     }
     else if (tipo === 'gastos') {
         const fileGastos = document.getElementById('file-gastos').files.length > 0;
@@ -254,6 +259,8 @@ window.procesarSolicitud = async function (tipo) {
         nombreTipo = listaConfig ? listaConfig.titulo_lista : "Lista Personalizada";
     }
     else if (tipo === 'clientes') { nombreTipo = "Limpieza de Clientes"; }
+    // MODIFICACIÓN 2: Nombre de la descarga para la auditoría
+    else if (tipo === 'clientes_auditoria_tags') { nombreTipo = "Auditoria de Tags (Sin Descuento)"; }
     else if (tipo === 'gastos') { nombreTipo = "Gastos Comprobables"; }
     else if (tipo === 'transacciones') { nombreTipo = "Transacciones Bancarias"; }
     else if (tipo === 'resurtido') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Lista3']; nombreTipo = "Lista de Resurtido"; }
