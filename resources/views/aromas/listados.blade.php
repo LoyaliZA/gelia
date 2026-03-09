@@ -144,7 +144,7 @@
             name="precios" 
             title="2. Precios" 
             colorTheme="green" 
-            instructions="<span class='text-emerald-400 font-bold'>Ruta:</span> Almacen > Productos<br><span class='text-emerald-400 font-bold'>Operaciones:</span> Exportar lista de precios<br><span class='text-emerald-400 font-bold'>Opciones:</span> Guardar en carpeta." 
+            instructions="<span class='text-blue-400 font-bold'>Ruta:</span> Almacen > Productos<br><span class='text-blue-400 font-bold'>Operaciones:</span> Exportar lista de precios<br><span class='text-blue-400 font-bold'>Opciones:</span> Guardar en carpeta." 
         />
 
         <x-upload-area 
