@@ -1,8 +1,8 @@
-@extends('layouts.app')
+@extends('layouts.aromas') @section('aromas-content')
 
 @section('title', 'Transacciones Bancarias | Gelia Hub')
 
-@section('content')
+@section('aromas-content')
 <header class="flex items-center justify-between mb-6 border-b border-dark-700 pb-6">
     <div>
         <h1 class="text-4xl font-extrabold text-white tracking-tight">

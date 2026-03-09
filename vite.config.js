@@ -14,13 +14,14 @@ export default defineConfig({
                 'resources/js/aromas/clientes.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/aromas/gastos.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/aromas/transacciones.js', // <-- NUEVO SCRIPT COMPILABLE
+                'resources/js/aromas/listados.js', // <-- NUEVO SCRIPT COMPILABLE
             ],
             refresh: true,
         }),
     ],
     server: {
         host: '0.0.0.0', 
-        cors: true, // <-- ESTA ES LA LLAVE MAESTRA PARA MATAR EL ERROR
+        cors: true, // <-- Evitamos que haya un error de permisos al hacer fetch desde el frontend
         hmr: {
             host: '192.168.1.66', 
         },
