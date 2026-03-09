@@ -3,7 +3,8 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GeliaController;
 use App\Http\Controllers\BellaromaController;
-use App\Http\Controllers\AromasClienteController; // <-- 1. IMPORTAMOS EL NUEVO CONTROLADOR DE CLIENTES
+use App\Http\Controllers\AromasClienteController;
+use App\Http\Controllers\AromasGastoController; // <-- IMPORTAMOS EL CONTROLADOR DE GASTOS
 //use App\Http\Controllers\SefeController;
 
 // =========================================================
@@ -17,7 +18,7 @@ Route::get('/', function () {
 // MÓDULO AROMAS (Dividido por Funcionalidad)
 // =========================================================
 Route::prefix('aromas')->group(function () {
-    // Rutas del Core (Listas, Existencias, Costos - Aún en GeliaController)
+    // 1. Rutas del Core (Listas, Existencias, Costos - Aún en GeliaController)
     Route::get('/', [GeliaController::class, 'index'])->name('gelia.index');
     Route::post('/guardar-lista', [GeliaController::class, 'guardarLista'])->name('gelia.guardar');
     Route::post('/generar', [GeliaController::class, 'generar'])->name('gelia.generar');
@@ -26,21 +27,23 @@ Route::prefix('aromas')->group(function () {
     Route::get('/gelia-test', [GeliaController::class, 'testIndex'])->name('gelia.test');
 
     // ---------------------------------------------------------
-    // 2. NUEVAS RUTAS: MÓDULO DE CLIENTES INDEPENDIENTE
+    // 2. MÓDULO DE CLIENTES INDEPENDIENTE
     // ---------------------------------------------------------
-    // Ruta para ver la vista de clientes
     Route::get('/clientes', [AromasClienteController::class, 'index'])->name('aromas.clientes.index');
-    // Ruta para que el botón "Procesar" envíe el archivo aquí
     Route::post('/clientes/procesar', [AromasClienteController::class, 'procesar'])->name('aromas.clientes.procesar');
+
+    // ---------------------------------------------------------
+    // 3. NUEVAS RUTAS: MÓDULO DE GASTOS COMPROBABLES
+    // ---------------------------------------------------------
+    Route::get('/gastos', [AromasGastoController::class, 'index'])->name('aromas.gastos.index');
+    Route::post('/gastos/procesar', [AromasGastoController::class, 'procesar'])->name('aromas.gastos.procesar');
 });
 
 // =========================================================
 // MÓDULO BELLAROMA | Generador de Plantillas
 // =========================================================
 Route::prefix('bellaroma')->group(function () {
-    // Esta ruta es para ver la página web (Interfaz)
     Route::get('/', [BellaromaController::class, 'index'])->name('bellaroma.index');
-    // Esta ruta es para recibir los archivos y devolver el Excel armado
     Route::post('/generar', [BellaromaController::class, 'generar'])->name('bellaroma.generar');
 });
 
