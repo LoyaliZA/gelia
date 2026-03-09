@@ -4,7 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\GeliaController;
 use App\Http\Controllers\BellaromaController;
 use App\Http\Controllers\AromasClienteController;
-use App\Http\Controllers\AromasGastoController; // <-- IMPORTAMOS EL CONTROLADOR DE GASTOS
+use App\Http\Controllers\AromasGastoController;
+use App\Http\Controllers\AromasTransaccionController; // <-- IMPORTAMOS EL CONTROLADOR DE TRANSACCIONES
 //use App\Http\Controllers\SefeController;
 
 // =========================================================
@@ -33,10 +34,16 @@ Route::prefix('aromas')->group(function () {
     Route::post('/clientes/procesar', [AromasClienteController::class, 'procesar'])->name('aromas.clientes.procesar');
 
     // ---------------------------------------------------------
-    // 3. NUEVAS RUTAS: MÓDULO DE GASTOS COMPROBABLES
+    // 3. MÓDULO DE GASTOS COMPROBABLES
     // ---------------------------------------------------------
     Route::get('/gastos', [AromasGastoController::class, 'index'])->name('aromas.gastos.index');
     Route::post('/gastos/procesar', [AromasGastoController::class, 'procesar'])->name('aromas.gastos.procesar');
+
+    // ---------------------------------------------------------
+    // 4. NUEVAS RUTAS: MÓDULO DE TRANSACCIONES BANCARIAS
+    // ---------------------------------------------------------
+    Route::get('/transacciones', [AromasTransaccionController::class, 'index'])->name('aromas.transacciones.index');
+    Route::post('/transacciones/procesar', [AromasTransaccionController::class, 'procesar'])->name('aromas.transacciones.procesar');
 });
 
 // =========================================================
