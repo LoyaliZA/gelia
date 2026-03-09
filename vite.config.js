@@ -11,6 +11,7 @@ export default defineConfig({
                 'resources/js/app.js', 
                 'resources/js/bellaroma.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/aromas.js', // <-- NUEVO SCRIPT COMPILABLE
+                'resources/js/aromas/clientes.js', // <-- NUEVO SCRIPT COMPILABLE
             ],
             refresh: true,
         }),
