@@ -20,12 +20,25 @@ class BellaromaController extends Controller
 {
     public function index()
     {
-        $templates = BellaromaTemplate::latest()->get();
+        $hoy = date('Y-m-d');
+        
+        // Plantillas generadas exactamente hoy (Orden estricto por ID descendente)
+        $templatesHoy = BellaromaTemplate::whereDate('created_at', $hoy)
+                            ->orderByDesc('id')
+                            ->get();
+        
+        // Historial (Orden estricto por ID descendente)
+        $templatesHistorial = BellaromaTemplate::whereDate('created_at', '<', $hoy)
+                                ->orderByDesc('id')
+                                ->limit(100)
+                                ->get();
+
         $configHora = BellaromaConfig::where('llave', 'hora_notificacion')->first();
         $horaNotificacion = $configHora ? $configHora->valor : '';
-        $generadoHoy = BellaromaTemplate::whereDate('created_at', date('Y-m-d'))->exists();
+        
+        $generadoHoy = $templatesHoy->isNotEmpty();
 
-        return view('bellaroma', compact('templates', 'horaNotificacion', 'generadoHoy'));
+        return view('bellaroma', compact('templatesHoy', 'templatesHistorial', 'horaNotificacion', 'generadoHoy'));
     }
 
     public function generar(Request $request)
@@ -38,7 +51,8 @@ class BellaromaController extends Controller
             'precios' => 'required|file',
         ]);
 
-        $fecha = date('d-m-y');
+        // Condicional: Si el usuario activó el switch, damos la fecha de mañana
+        $fecha = $request->has('para_manana') ? date('d-m-y', strtotime('+1 day')) : date('d-m-y');
         $hashUnico = uniqid();
         
         $nombreVisual = "PLANTILLA-BELLAROMA-{$fecha}.xlsx"; 
