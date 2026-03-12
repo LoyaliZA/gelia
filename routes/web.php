@@ -52,4 +52,8 @@ Route::prefix('aromas')->group(function () {
 Route::prefix('bellaroma')->group(function () {
     Route::get('/', [BellaromaController::class, 'index'])->name('bellaroma.index');
     Route::post('/generar', [BellaromaController::class, 'generar'])->name('bellaroma.generar');
+    Route::get('/descargar/{id}', [BellaromaController::class, 'descargar'])->name('bellaroma.descargar');
+    Route::delete('/eliminar/{id}', [BellaromaController::class, 'eliminar'])->name('bellaroma.eliminar');
+    Route::post('/configuracion/verificar', [BellaromaController::class, 'verificarPin'])->name('bellaroma.config.verificar');
+    Route::post('/configuracion/guardar', [BellaromaController::class, 'guardarConfiguracion'])->name('bellaroma.config.guardar');
 });
