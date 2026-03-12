@@ -267,10 +267,11 @@ class BellaromaController extends Controller
     private function subirAGoogleDrive($rutaFisica, $nombreArchivo)
     {
         try {
-            $clientId = env('GOOGLE_DRIVE_CLIENT_ID');
-            $clientSecret = env('GOOGLE_DRIVE_CLIENT_SECRET');
-            $refreshToken = env('GOOGLE_DRIVE_REFRESH_TOKEN');
-            $folderId = env('GOOGLE_DRIVE_FOLDER_ID');
+            // Sustituimos env() por config()
+            $clientId = config('services.google_drive.client_id');
+            $clientSecret = config('services.google_drive.client_secret');
+            $refreshToken = config('services.google_drive.refresh_token');
+            $folderId = config('services.google_drive.folder_id');
 
             if (empty($clientId) || empty($refreshToken) || empty($folderId)) {
                 \Log::warning('AROMAS - Faltan credenciales OAuth o Folder ID de Google Drive.');
