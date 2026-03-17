@@ -21,24 +21,25 @@ class BellaromaController extends Controller
     public function index()
     {
         $hoy = date('Y-m-d');
-        
+
         // Plantillas generadas exactamente hoy (Orden estricto por ID descendente)
         $templatesHoy = BellaromaTemplate::whereDate('created_at', $hoy)
-                            ->orderByDesc('id')
-                            ->get();
-        
+            ->orderByDesc('id')
+            ->get();
+
         // Historial (Orden estricto por ID descendente)
         $templatesHistorial = BellaromaTemplate::whereDate('created_at', '<', $hoy)
-                                ->orderByDesc('id')
-                                ->limit(100)
-                                ->get();
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
 
         $configHora = BellaromaConfig::where('llave', 'hora_notificacion')->first();
         $horaNotificacion = $configHora ? $configHora->valor : '';
-        
-        $generadoHoy = $templatesHoy->isNotEmpty();
 
-        return view('bellaroma', compact('templatesHoy', 'templatesHistorial', 'horaNotificacion', 'generadoHoy'));
+        $generadoHoy = $templatesHoy->isNotEmpty();
+        $driveFolderId = config('services.google_drive.folder_id'); // <-- Extraemos el ID de la carpeta raíz
+
+        return view('bellaroma', compact('templatesHoy', 'templatesHistorial', 'horaNotificacion', 'generadoHoy', 'driveFolderId'));
     }
 
     public function generar(Request $request)
@@ -54,10 +55,10 @@ class BellaromaController extends Controller
         // Condicional: Si el usuario activó el switch, damos la fecha de mañana
         $fecha = $request->has('para_manana') ? date('d-m-y', strtotime('+1 day')) : date('d-m-y');
         $hashUnico = uniqid();
-        
-        $nombreVisual = "PLANTILLA-BELLAROMA-{$fecha}.xlsx"; 
-        $nombreFisico = "PLANTILLA-BELLAROMA-{$fecha}_{$hashUnico}.xlsx"; 
-        
+
+        $nombreVisual = "PLANTILLA-BELLAROMA-{$fecha}.xlsx";
+        $nombreFisico = "PLANTILLA-BELLAROMA-{$fecha}_{$hashUnico}.xlsx";
+
         $rutaTemp = sys_get_temp_dir();
 
         $diccionarioPrecios = [];
@@ -71,15 +72,15 @@ class BellaromaController extends Controller
         });
 
         $listaProductos = [];
-        $multiplicadorLista3 = 0.8572; 
+        $multiplicadorLista3 = 0.8572;
 
         $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaProductos, $diccionarioPrecios, $multiplicadorLista3) {
             $reader = (new FastExcel)->withoutHeaders()->import($ruta);
             foreach ($reader as $linea) {
                 if (!isset($linea[4]) || $linea[4] == 'Código') continue;
-                
+
                 $skuCrudo = trim((string)$linea[4]);
-                if ($skuCrudo === '') continue; 
+                if ($skuCrudo === '') continue;
                 $skuBuscador = ltrim($skuCrudo, '0');
 
                 $existenciaReal = (int)($linea[10] ?? 0);
@@ -87,7 +88,7 @@ class BellaromaController extends Controller
 
                 $folio = $linea[3] ?? '';
                 $descripcion = $linea[5] ?? '';
-                
+
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
                 $mayoreo = $pg * $multiplicadorLista3;
 
@@ -120,12 +121,12 @@ class BellaromaController extends Controller
         $formatoPedidoObj = new Format($excel->getHandle());
         $estiloPedidoData = $formatoPedidoObj->border(Format::BORDER_THIN)->unlocked()->toResource();
 
-        $excel->setColumn('A:A', 15.0); 
-        $excel->setColumn('B:B', 15.0); 
-        $excel->setColumn('C:C', 65.0); 
-        $excel->setColumn('D:E', 15.0); 
-        $excel->setColumn('F:F', 15.0, $estiloDesbloqueado); 
-        $excel->setColumn('H:H', 75.0); 
+        $excel->setColumn('A:A', 15.0);
+        $excel->setColumn('B:B', 15.0);
+        $excel->setColumn('C:C', 65.0);
+        $excel->setColumn('D:E', 15.0);
+        $excel->setColumn('F:F', 15.0, $estiloDesbloqueado);
+        $excel->setColumn('H:H', 75.0);
 
         $excel->insertText(0, 0, 'IMPORTE', '', $estiloCabeceraBorde);
         $excel->insertFormula(0, 1, '=TEXT(SUMPRODUCT(E5:E50000,F5:F50000), "$#,##0.00")', $estiloCabeceraBorde);
@@ -155,12 +156,12 @@ class BellaromaController extends Controller
             $filaActual++;
         }
 
-        $excel->protection('BELLAROMA123'); 
+        $excel->protection('BELLAROMA123');
         $rutaFinalTemp = $excel->output();
 
         $rutaStorage = 'bellaroma/' . $nombreFisico;
         Storage::disk('public')->put($rutaStorage, file_get_contents($rutaFinalTemp));
-        
+
         $tamanoKb = round(filesize($rutaFinalTemp) / 1024, 2) . ' KB';
         unlink($rutaFinalTemp);
 
@@ -176,14 +177,15 @@ class BellaromaController extends Controller
             }
         }
 
-        $subidoExitosamente = $this->subirAGoogleDrive($rutaStorage, $nombreVisual);
+        $driveId = $this->subirAGoogleDrive($rutaStorage, $nombreVisual);
 
         $template = BellaromaTemplate::create([
-            'nombre_archivo' => $nombreVisual, 
-            'ruta_fisica' => $rutaStorage,     
+            'nombre_archivo' => $nombreVisual,
+            'ruta_fisica' => $rutaStorage,
             'tamano_kb' => $tamanoKb,
-            'enviado_correo' => $enviadoExitosamente, 
-            'subido_drive' => $subidoExitosamente 
+            'enviado_correo' => $enviadoExitosamente,
+            'subido_drive' => $driveId ? true : false, // Si hay ID, es true
+            'drive_id' => $driveId // Guardamos el enlace exacto
         ]);
 
         return response()->json([
@@ -196,7 +198,7 @@ class BellaromaController extends Controller
     public function descargar($id)
     {
         $template = BellaromaTemplate::findOrFail($id);
-        
+
         if (!Storage::disk('public')->exists($template->ruta_fisica)) {
             abort(404, 'El archivo físico ya no existe en el servidor.');
         }
@@ -207,7 +209,7 @@ class BellaromaController extends Controller
     public function eliminar($id)
     {
         $template = BellaromaTemplate::findOrFail($id);
-        
+
         if (Storage::disk('public')->exists($template->ruta_fisica)) {
             Storage::disk('public')->delete($template->ruta_fisica);
         }
@@ -297,7 +299,7 @@ class BellaromaController extends Controller
             $client->setClientSecret($clientSecret);
             $client->refreshToken($refreshToken);
             // Esto permite control total sobre los archivos de Drive usando la cuota de tu cuenta principal
-            $client->addScope(Drive::DRIVE_FILE); 
+            $client->addScope(Drive::DRIVE_FILE);
 
             $service = new Drive($client);
 
@@ -315,10 +317,10 @@ class BellaromaController extends Controller
                 'fields' => 'id'
             ]);
 
-            return !empty($file->id);
+            return $file->id; // <-- Retornamos el ID alfabético de Google
         } catch (\Exception $e) {
             \Log::error('AROMAS - Error Google Drive OAuth: ' . $e->getMessage());
-            return false;
+            return null; // <-- Retornamos null si falla
         }
     }
 }
