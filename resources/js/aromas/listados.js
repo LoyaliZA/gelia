@@ -8,7 +8,6 @@ const camposPorArchivo = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Escuchar cambios en los inputs para habilitar botones dinámicamente
     document.querySelectorAll('input[type="file"]').forEach(input => {
         input.addEventListener('change', window.verificarArchivos);
     });
@@ -167,12 +166,14 @@ window.guardarNuevaLista = async function (e) {
 
     window.mostrarCarga(idLista ? "Actualizando configuración..." : "Guardando configuración...");
 
+    const tokenCSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('input[name="_token"]')?.value;
+
     try {
         const response = await fetch(url, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                'X-CSRF-TOKEN': tokenCSRF,
                 'Accept': 'application/json'
             }
         });
@@ -204,7 +205,6 @@ window.procesarSolicitud = async function (tipo) {
     const tienePrecios = document.getElementById('file-precios').files.length > 0;
     const tieneCostos = document.getElementById('file-costos').files.length > 0;
 
-    // Validación de obligatoriedad de archivos según el tipo de lista
     if (!isNaN(tipo)) {
         if (!tieneExistencias) { window.mostrarToast("Existencias es obligatorio.", "red"); return; }
         if (window.GeliaConfig && window.GeliaConfig.customLists) {
@@ -228,7 +228,6 @@ window.procesarSolicitud = async function (tipo) {
     let columnas = [];
     let nombreTipo = "";
 
-    // Mapeo del nombre del archivo y columnas estándar
     if (!isNaN(tipo)) {
         const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
         nombreTipo = listaConfig ? listaConfig.titulo_lista : "Lista Personalizada";
@@ -252,23 +251,50 @@ window.procesarSolicitud = async function (tipo) {
     window.mostrarCarga(`Generando: ${nombreTipo}...`);
     document.getElementById('alertas').innerHTML = '';
 
+    const tokenCSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('input[name="_token"]')?.value;
+
     try {
         const urlGenerar = window.GeliaConfig.routes.generar;
         const response = await fetch(urlGenerar, {
             method: 'POST',
             body: formData,
-            headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value, 'Accept': 'application/json' }
+            headers: { 
+                'X-CSRF-TOKEN': tokenCSRF, 
+                'Accept': 'application/json' 
+            }
         });
 
-        if (!response.ok) {
+        if (response.status === 419) {
+            window.mostrarToast("Sesión caducada. Recargando el sistema...", "orange");
+            setTimeout(() => window.location.reload(), 2000);
+            return;
+        }
+
+        const contentType = response.headers.get("content-type");
+
+        if (!response.ok && contentType && contentType.includes("text/html")) {
+            throw new Error("Error 500 en el servidor. Posible falla de permisos en disco temporal.");
+        }
+
+        if (contentType && contentType.includes("application/json")) {
             const data = await response.json();
-            if (data.errors) {
-                let html = `<ul class='list-disc ml-5'>`;
-                Object.values(data.errors).forEach(err => html += `<li>${err}</li>`);
-                html += `</ul>`;
-                window.mostrarError(html);
-            } else { throw new Error(data.error || 'Error en el servidor'); }
-            window.ocultarCarga(); return;
+            
+            if (!response.ok) {
+                if (data.errors) {
+                    let html = `<ul class='list-disc ml-5'>`;
+                    Object.values(data.errors).forEach(err => html += `<li>${err}</li>`);
+                    html += `</ul>`;
+                    window.mostrarError(html);
+                } else { throw new Error(data.error || 'Error en el servidor'); }
+                window.ocultarCarga(); 
+                return;
+            }
+
+            if (data.requiere_confirmacion) {
+                window.ocultarCarga();
+                window.mostrarModalInconsistencias(data.inconsistencias, data.temp_file, data.nombre_descarga);
+                return;
+            }
         }
 
         const blob = await response.blob();
@@ -301,13 +327,93 @@ window.eliminarLista = async function (event, id) {
     event.stopPropagation();
     if (!confirm("Eliminar esta lista personalizada?")) return;
     window.mostrarCarga("Eliminando...");
+    
+    const tokenCSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('input[name="_token"]')?.value;
+
     try {
         const urlEliminar = window.GeliaConfig.routes.eliminar.replace(':id', id);
         const response = await fetch(urlEliminar, {
             method: 'DELETE',
-            headers: { 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value, 'Accept': 'application/json' }
+            headers: { 'X-CSRF-TOKEN': tokenCSRF, 'Accept': 'application/json' }
         });
         if (response.ok) { window.mostrarToast("Eliminada.", "green"); setTimeout(() => window.location.reload(), 1000); } 
         else { window.mostrarToast("Error al eliminar.", "red"); }
     } catch (error) { window.mostrarToast("Error de red.", "red"); } finally { window.ocultarCarga(); }
+}
+
+// ==========================================
+// MANEJO DE INCONSISTENCIAS WIZERP
+// ==========================================
+window.mostrarModalInconsistencias = function (inconsistencias, tempFile, nombreDescarga) {
+    const tbody = document.getElementById('tabla-inconsistencias-body');
+    if (!tbody) {
+        console.error("El contenedor 'tabla-inconsistencias-body' no existe en el DOM.");
+        return;
+    }
+    
+    tbody.innerHTML = '';
+
+    inconsistencias.forEach(item => {
+        tbody.innerHTML += `
+            <tr class="hover:bg-dark-700/50 transition">
+                <td class="px-4 py-2 font-mono text-aromas-main">${item.sku}</td>
+                <td class="px-4 py-2 truncate max-w-xs" title="${item.descripcion}">${item.descripcion}</td>
+                <td class="px-4 py-2 text-xs text-gray-400">${item.almacen}</td>
+                <td class="px-4 py-2 text-center text-orange-400 font-bold">${item.existencia}</td>
+            </tr>
+        `;
+    });
+
+    const btnForzar = document.getElementById('btn-forzar-descarga');
+    if (btnForzar) {
+        btnForzar.onclick = () => window.descargarTemporal(tempFile, nombreDescarga);
+    }
+
+    const modal = document.getElementById('modal-inconsistencias');
+    if (modal) modal.classList.remove('hidden');
+}
+
+window.cerrarModalInconsistencias = function () {
+    const modal = document.getElementById('modal-inconsistencias');
+    if (modal) modal.classList.add('hidden');
+}
+
+window.descargarTemporal = function (tempFile, nombreDescarga) {
+    window.cerrarModalInconsistencias();
+    window.mostrarToast("Iniciando descarga...", "blue");
+
+    const url = new URL(window.GeliaConfig.routes.descargar_temporal, window.location.origin);
+    url.searchParams.append('temp_file', tempFile);
+    url.searchParams.append('nombre_descarga', nombreDescarga);
+
+    const a = document.createElement("a");
+    a.href = url.toString();
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+}
+
+window.copiarTablaInconsistencias = function () {
+    const tbody = document.getElementById('tabla-inconsistencias-body');
+    if (!tbody) return;
+
+    let texto = "SKU\tDESCRIPCION\tALMACEN\tEXISTENCIA\n";
+    
+    Array.from(tbody.rows).forEach(row => {
+        const sku = row.cells[0].innerText;
+        const desc = row.cells[1].innerText;
+        const almacen = row.cells[2].innerText;
+        const existencia = row.cells[3].innerText;
+        texto += `${sku}\t${desc}\t${almacen}\t${existencia}\n`;
+    });
+
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(texto).then(() => {
+            window.mostrarToast("Tabla copiada lista para Excel.", "green");
+        }).catch(err => {
+            window.mostrarToast("Error al copiar: " + err, "red");
+        });
+    } else {
+        window.mostrarToast("API de portapapeles no soportada en este entorno.", "orange");
+    }
 }

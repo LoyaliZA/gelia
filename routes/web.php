@@ -26,6 +26,9 @@ Route::prefix('aromas')->group(function () {
     Route::post('/generar', [AromasListasController::class, 'generar'])->name('gelia.generar');
     Route::delete('/eliminar-lista/{id}', [AromasListasController::class, 'eliminarLista'])->name('gelia.eliminar');
     Route::post('/actualizar-lista/{id}', [AromasListasController::class, 'actualizarLista'])->name('gelia.actualizar');
+    
+    // NUEVA RUTA: Descarga Diferida de Excel con Inconsistencias
+    Route::get('/descargar-temporal', [AromasListasController::class, 'descargarTemporal'])->name('gelia.descargar-temporal');
 
     // ---------------------------------------------------------
     // 2. MÓDULO DE CLIENTES INDEPENDIENTE

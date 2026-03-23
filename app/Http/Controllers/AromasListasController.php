@@ -189,7 +189,9 @@ class AromasListasController extends Controller
 
         // 5. PROCESAR EXISTENCIAS
         $listaCompleta = []; 
-        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique) {
+        $inconsistencias = []; // Almacena productos con existencia > 0 y precio/margen 0
+
+        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique) {
             $reader = (new FastExcel)->withoutHeaders()->import($ruta);
             foreach ($reader as $linea) {
                 if (!isset($linea[4]) || $linea[4] == 'Código') continue;
@@ -213,6 +215,16 @@ class AromasListasController extends Controller
                 
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
                 $costoWizerp = $diccionarioCostosWizerp[$skuBuscador] ?? 0.0;
+
+                // VALIDACIÓN DE NEGOCIO: Detección de errores en Wizerp
+                if ($existencia > 0 && $pg <= 0) {
+                    $inconsistencias[] = [
+                        'sku' => $skuCrudo,
+                        'descripcion' => $descripcion,
+                        'almacen' => $almacen,
+                        'existencia' => $existencia
+                    ];
+                }
 
                 $costoCalculado = $pg > 0 ? $pg / $divisorCostoCalculado : 0.0;
                 $plataformas = $pg * $multiplicadorPlataformas;
@@ -249,7 +261,43 @@ class AromasListasController extends Controller
             });
         }
 
+        // 7. DESCARGA DIFERIDA CON ESTADO (Stateful Deferred Download)
+        if (count($inconsistencias) > 0) {
+            $tempFilename = 'excel_temp_' . uniqid() . '.xlsx';
+            $tempDir = storage_path('app/temp');
+            
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+
+            $tempPath = $tempDir . '/' . $tempFilename;
+            (new FastExcel(collect($listaCompleta)))->export($tempPath);
+
+            return response()->json([
+                'requiere_confirmacion' => true,
+                'inconsistencias' => $inconsistencias,
+                'temp_file' => $tempFilename,
+                'nombre_descarga' => $nombreArchivo
+            ]);
+        }
+
         return (new FastExcel(collect($listaCompleta)))->download($nombreArchivo);
+    }
+
+    public function descargarTemporal(Request $request)
+    {
+        $request->validate([
+            'temp_file' => ['required', 'string', 'regex:/^excel_temp_[a-zA-Z0-9]+\.xlsx$/'],
+            'nombre_descarga' => 'required|string'
+        ]);
+
+        $path = storage_path('app/temp/' . $request->temp_file);
+
+        if (!file_exists($path)) {
+            return response()->json(['error' => 'El archivo temporal ha expirado o ya fue procesado.'], 404);
+        }
+
+        return response()->download($path, $request->nombre_descarga)->deleteFileAfterSend(true);
     }
 
     public function eliminarLista($id)

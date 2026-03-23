@@ -109,6 +109,48 @@
     </div>
 </div>
 
+<div id="modal-inconsistencias" class="hidden fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-dark-800 border border-orange-500/50 w-full max-w-5xl rounded-xl shadow-2xl max-h-[90vh] flex flex-col">
+        <div class="p-6 border-b border-dark-700 flex justify-between items-center bg-dark-800 rounded-t-xl z-10">
+            <h2 class="text-2xl font-bold text-orange-400 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                Advertencia: Inconsistencias en Wizerp Detectadas
+            </h2>
+            <button onclick="cerrarModalInconsistencias()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+
+        <div class="p-6 overflow-y-auto custom-scroll flex-1">
+            <p class="text-gray-300 mb-4 text-sm">Se han detectado productos con <span class="text-orange-400 font-bold">existencia mayor a 0 pero con Precio/Margen 0</span> en los archivos base. Por favor, verifica estos datos en el sistema para evitar fugas.</p>
+            
+            <div class="bg-dark-900 border border-dark-700 rounded-lg overflow-hidden">
+                <table class="w-full text-left text-sm text-gray-300">
+                    <thead class="bg-dark-800 text-dark-muted uppercase text-[10px] font-bold">
+                        <tr>
+                            <th class="px-4 py-3">SKU</th>
+                            <th class="px-4 py-3">Descripción</th>
+                            <th class="px-4 py-3">Almacén</th>
+                            <th class="px-4 py-3 text-center">Existencia</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-inconsistencias-body" class="divide-y divide-dark-700">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-dark-700 flex justify-between items-center bg-dark-800 rounded-b-xl">
+            <button type="button" onclick="copiarTablaInconsistencias()" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white font-bold rounded-lg transition flex items-center gap-2 text-sm border border-dark-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                Copiar Tabla
+            </button>
+            <div class="flex gap-3">
+                <button type="button" onclick="cerrarModalInconsistencias()" class="px-4 py-2 text-dark-muted hover:text-white text-sm transition">Cancelar</button>
+                <button type="button" id="btn-forzar-descarga" class="px-6 py-2 bg-orange-600 hover:bg-orange-500 text-white font-bold rounded-lg shadow-lg transition text-sm">Descargar de todos modos</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <header class="flex items-center justify-between mb-8 pb-6">
     <div>
         <h1 class="text-3xl font-extrabold text-white tracking-tight">
@@ -281,7 +323,9 @@
             generar: "{{ route('gelia.generar') }}",
             guardar: "{{ route('gelia.guardar') }}",
             actualizar: "{{ route('gelia.actualizar', ['id' => ':id']) }}",
-            eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}"
+            eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}",
+            // NUEVO: Ruta para descargar el temporal generado tras saltar validaciones
+            descargar_temporal: "{{ route('gelia.descargar-temporal') }}" 
         },
         customLists: {!! json_encode($listasPersonalizadas ?? []) !!}
     };
