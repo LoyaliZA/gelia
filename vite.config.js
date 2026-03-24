@@ -15,6 +15,7 @@ export default defineConfig({
                 'resources/js/aromas/gastos.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/aromas/transacciones.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/aromas/listados.js', // <-- NUEVO SCRIPT COMPILABLE
+                'resources/js/aromas/avisos.js', // <-- NUEVO SCRIPT COMPILABLE
             ],
             refresh: true,
         }),

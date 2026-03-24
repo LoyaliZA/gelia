@@ -6,6 +6,7 @@ use App\Http\Controllers\BellaromaController;
 use App\Http\Controllers\AromasClienteController;
 use App\Http\Controllers\AromasGastoController;
 use App\Http\Controllers\AromasTransaccionController;
+use App\Http\Controllers\AromasAvisosController; // <-- NUEVO MÓDULO DE AVISOS DE MERCANCÍA
 
 // =========================================================
 // RUTA PRINCIPAL (Home - Selección de Departamento)
@@ -47,6 +48,12 @@ Route::prefix('aromas')->group(function () {
     // ---------------------------------------------------------
     Route::get('/transacciones', [AromasTransaccionController::class, 'index'])->name('aromas.transacciones.index');
     Route::post('/transacciones/procesar', [AromasTransaccionController::class, 'procesar'])->name('aromas.transacciones.procesar');
+    
+    // ---------------------------------------------------------
+    // 5. MÓDULO DE AVISOS DE MERCANCÍA (Cruce de Inventario)
+    // ---------------------------------------------------------
+    Route::get('/avisos', [AromasAvisosController::class, 'index'])->name('aromas.avisos.index');
+    Route::post('/avisos/procesar', [AromasAvisosController::class, 'procesar'])->name('aromas.avisos.procesar');
 });
 
 // =========================================================

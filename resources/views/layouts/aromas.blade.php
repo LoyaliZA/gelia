@@ -35,6 +35,15 @@
             'colorClass' => 'text-orange-500',
             'bgHover' => 'hover:bg-orange-500/10 hover:border-orange-500/30',
             'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />'
+        ],
+        // NUEVO MÓDULO: Aviso Mercancía
+        [
+            'route' => 'aromas.avisos.index',
+            'active' => request()->routeIs('aromas.avisos.*'),
+            'title' => 'Aviso Mercancía',
+            'colorClass' => 'text-cyan-400',
+            'bgHover' => 'hover:bg-cyan-400/10 hover:border-cyan-400/30',
+            'icon' => '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />'
         ]
     ];
     
