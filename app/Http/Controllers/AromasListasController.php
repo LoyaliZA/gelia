@@ -189,23 +189,24 @@ class AromasListasController extends Controller
 
         // 5. PROCESAR EXISTENCIAS
         $listaCompleta = []; 
-        $inconsistencias = []; // Almacena productos con existencia > 0 y precio/margen 0
+        $inconsistencias = []; 
+        $tienePrecios = $request->hasFile('precios'); 
 
-        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique) {
-            $reader = (new FastExcel)->withoutHeaders()->import($ruta);
-            foreach ($reader as $linea) {
-                if (!isset($linea[4]) || $linea[4] == 'Código') continue;
+        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique, $tienePrecios) {
+            
+            // CORRECCIÓN 1: Pasar closure a import() para forzar el uso de Generators
+            (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique, $tienePrecios) {
+                if (!isset($linea[4]) || $linea[4] == 'Código') return;
+                
                 $skuCrudo = trim((string)$linea[4]);
-                if ($skuCrudo === '') continue; 
+                if ($skuCrudo === '') return; 
                 $skuBuscador = ltrim($skuCrudo, '0');
 
                 $existenciaRaw = $linea[10] ?? 0;
                 $existencia = is_numeric($existenciaRaw) ? (int)$existenciaRaw : 0;
 
                 if ($esListaPersonalizadaBD && $configuracionBD->solo_con_existencia) {
-                    if ($existencia <= 0) {
-                        continue; 
-                    }
+                    if ($existencia <= 0) return; 
                 }
 
                 $almacen = $linea[1] ?? '';
@@ -216,8 +217,7 @@ class AromasListasController extends Controller
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
                 $costoWizerp = $diccionarioCostosWizerp[$skuBuscador] ?? 0.0;
 
-                // VALIDACIÓN DE NEGOCIO: Detección de errores en Wizerp
-                if ($existencia > 0 && $pg <= 0) {
+                if ($tienePrecios && $existencia > 0 && $pg <= 0) {
                     $inconsistencias[] = [
                         'sku' => $skuCrudo,
                         'descripcion' => $descripcion,
@@ -251,15 +251,39 @@ class AromasListasController extends Controller
                     }
                 }
                 $listaCompleta[] = $fila;
-            }
+            });
         });
 
-        // 6. ORDENAMIENTO
-        if (in_array('Descripcion', $columnasSeleccionadas)) {
-            usort($listaCompleta, function ($a, $b) {
-                return strcasecmp($a['Descripcion'] ?? '', $b['Descripcion'] ?? '');
-            });
+        // 6. ORDENAMIENTO (Optimizado a nivel C)
+        if (in_array('Descripcion', $columnasSeleccionadas) && !empty($listaCompleta)) {
+            // CORRECCIÓN 2: array_multisort en lugar de usort
+            $descripciones = array_column($listaCompleta, 'Descripcion');
+            array_multisort($descripciones, SORT_ASC, SORT_STRING | SORT_FLAG_CASE, $listaCompleta);
         }
+
+        // 7. DESCARGA DIFERIDA CON ESTADO
+        if (count($inconsistencias) > 0) {
+            $tempFilename = 'excel_temp_' . uniqid() . '.xlsx';
+            $tempDir = storage_path('app/temp');
+            
+            if (!file_exists($tempDir)) {
+                mkdir($tempDir, 0755, true);
+            }
+
+            $tempPath = $tempDir . '/' . $tempFilename;
+            // CORRECCIÓN 3: Pasar array puro en lugar de collect()
+            (new FastExcel($listaCompleta))->export($tempPath);
+
+            return response()->json([
+                'requiere_confirmacion' => true,
+                'inconsistencias' => $inconsistencias,
+                'temp_file' => $tempFilename,
+                'nombre_descarga' => $nombreArchivo
+            ]);
+        }
+
+        // CORRECCIÓN 3: Pasar array puro en lugar de collect()
+        return (new FastExcel($listaCompleta))->download($nombreArchivo);
 
         // 7. DESCARGA DIFERIDA CON ESTADO (Stateful Deferred Download)
         if (count($inconsistencias) > 0) {
