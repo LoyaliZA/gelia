@@ -8,16 +8,13 @@ use Illuminate\Support\Facades\Validator;
 
 class AromasClienteController extends Controller
 {
-    // 1. Muestra la página web (la vista) de Clientes
     public function index()
     {
         return view('aromas.clientes');
     }
 
-    // 2. Recibe el CSV, lo limpia y devuelve el Excel
     public function procesar(Request $request)
     {
-        // 1. Validación de seguridad e inputs (Agregamos validación estricta para el orden)
         $validator = Validator::make($request->all(), [
             'clientes' => 'required|file|mimes:csv,txt',
             'columnas_clientes' => 'nullable|string', 
@@ -29,7 +26,6 @@ class AromasClienteController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // 2. Configuración de parámetros
         $columnasSeleccionadas = $request->input('columnas_clientes') 
             ? explode(',', $request->input('columnas_clientes')) 
             : ['ID', 'NOMBRE']; 
@@ -39,7 +35,6 @@ class AromasClienteController extends Controller
 
         $listaCompleta = [];
 
-        // 3. Procesamiento seguro: Primero extraemos TODAS las filas completas
         $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaCompleta, $incluirSinId) {
             (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, $incluirSinId) {
                 
@@ -56,7 +51,11 @@ class AromasClienteController extends Controller
                     return mb_check_encoding($texto, 'UTF-8') ? $texto : mb_convert_encoding($texto, 'UTF-8', 'ISO-8859-1');
                 };
 
-                // Guardamos la fila intacta temporalmente
+                // Recuperación dinámica de columnas desbordadas (tags divididos por comas sin comillas)
+                $totalCols = count($linea);
+                $tagsRaw = $totalCols > 28 ? implode(', ', array_slice($linea, 26, $totalCols - 27)) : ($linea[26] ?? '');
+                $tipoRaw = $totalCols > 28 ? ($linea[$totalCols - 1] ?? '') : ($linea[27] ?? '');
+
                 $listaCompleta[] = [
                     'ID' => $id,
                     'NOMBRE' => $limpiarTexto($linea[1] ?? ''),
@@ -84,13 +83,12 @@ class AromasClienteController extends Controller
                     'USO_DE_CFDI' => $limpiarTexto($linea[23] ?? ''),
                     'GRUPO_DESCUENTO' => $limpiarTexto($linea[24] ?? ''),
                     'VARIABLE_CONTABLE' => $limpiarTexto($linea[25] ?? ''),
-                    'TAGS' => $limpiarTexto($linea[26] ?? ''),
-                    'TIPO' => $limpiarTexto($linea[27] ?? '')
+                    'TAGS' => $limpiarTexto($tagsRaw),
+                    'TIPO' => $limpiarTexto($tipoRaw)
                 ];
             });
         });
 
-        // 4. Lógica de Ordenamiento (Se aplica antes de eliminar las columnas no deseadas)
         if ($orden) {
             usort($listaCompleta, function ($a, $b) use ($orden) {
                 switch ($orden) {
@@ -108,7 +106,6 @@ class AromasClienteController extends Controller
             });
         }
 
-        // 5. Filtrado final de columnas
         $listaFinal = [];
         foreach ($listaCompleta as $fila) {
             $filaFiltrada = [];
@@ -126,7 +123,6 @@ class AromasClienteController extends Controller
         return (new FastExcel(collect($listaFinal)))->download("CLIENTES-PERSONALIZADO-$fecha.xlsx");
     }
 
-    // Función auxiliar de seguridad (la trajimos del GeliaController)
     private function procesarArchivoSeguro($archivo, callable $callbackLogica)
     {
         if (!$archivo) return;
@@ -139,6 +135,4 @@ class AromasClienteController extends Controller
             if (file_exists($rutaCompleta)) unlink($rutaCompleta);
         }
     }
-
-    
 }

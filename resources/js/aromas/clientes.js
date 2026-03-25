@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Escuchar el evento change del input file si necesitas alguna validación inmediata
     const fileInput = document.getElementById('file-clientes');
     if (fileInput) {
         fileInput.addEventListener('change', () => {
@@ -10,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// Función para marcar/desmarcar masivamente
 window.toggleColumnasClientes = function (btn) {
     const checks = document.querySelectorAll('.check-col-cliente');
     const isSelectingAll = btn.innerText.trim() === 'Seleccionar Todas';
@@ -18,11 +16,9 @@ window.toggleColumnasClientes = function (btn) {
     btn.innerText = isSelectingAll ? 'Desmarcar Todas' : 'Seleccionar Todas';
 }
 
-// Procesamiento principal de la solicitud
 window.procesarSolicitud = async function () {
     const fileInput = document.getElementById('file-clientes');
     
-    // 1. Validaciones
     if (!fileInput || fileInput.files.length === 0) { 
         window.mostrarToast("Sube el archivo CSV o TXT de Clientes", "red"); 
         return; 
@@ -34,7 +30,6 @@ window.procesarSolicitud = async function () {
         return; 
     }
 
-    // 2. Preparar los datos
     const form = document.getElementById('form-principal');
     const formData = new FormData(form);
 
@@ -42,17 +37,22 @@ window.procesarSolicitud = async function () {
     formData.append('columnas_clientes', cols.join(','));
     formData.set('incluir_sin_id', document.getElementById('check-incluir-sin-id').checked ? '1' : '0');
 
-    // 3. Ejecutar Petición
     window.mostrarCarga(`Limpiando Base de Datos de Clientes...`);
     document.getElementById('alertas').innerHTML = '';
 
     try {
         const urlGenerar = window.GeliaConfig.routes.generar;
+        
+        // Obtención segura del token CSRF
+        const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+        const csrfInput = document.querySelector('input[name="_token"]');
+        const csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : (csrfInput ? csrfInput.value : '');
+
         const response = await fetch(urlGenerar, {
             method: 'POST',
             body: formData,
             headers: { 
-                'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value, 
+                'X-CSRF-TOKEN': csrfToken, 
                 'Accept': 'application/json' 
             }
         });
@@ -71,13 +71,11 @@ window.procesarSolicitud = async function () {
             return;
         }
 
-        // 4. Descargar el Excel generado
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = downloadUrl;
 
-        // Intentar obtener el nombre del archivo desde los headers del backend
         const contentDisposition = response.headers.get('Content-Disposition');
         let fileName = `CLIENTES-SANITIZADOS.xlsx`;
         if (contentDisposition) {
