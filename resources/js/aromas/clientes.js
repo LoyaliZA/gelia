@@ -37,6 +37,12 @@ window.procesarSolicitud = async function () {
     formData.append('columnas_clientes', cols.join(','));
     formData.set('incluir_sin_id', document.getElementById('check-incluir-sin-id').checked ? '1' : '0');
 
+    // Novedad: Captura y seteo del filtro especial
+    const checkFiltroEspecial = document.getElementById('check-filtro-especial');
+    if (checkFiltroEspecial) {
+        formData.set('filtro_especial', checkFiltroEspecial.checked ? '1' : '0');
+    }
+
     window.mostrarCarga(`Limpiando Base de Datos de Clientes...`);
     document.getElementById('alertas').innerHTML = '';
 

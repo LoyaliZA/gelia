@@ -24,7 +24,7 @@ export default defineConfig({
         host: '0.0.0.0', 
         cors: true, // <-- Evitamos que haya un error de permisos al hacer fetch desde el frontend
         hmr: {
-            host: '192.168.1.66', 
+            host: '100.75.11.59', 
         },
         watch: {
             ignored: ['**/storage/framework/views/**'],

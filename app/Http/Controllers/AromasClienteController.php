@@ -19,7 +19,8 @@ class AromasClienteController extends Controller
             'clientes' => 'required|file|mimes:csv,txt',
             'columnas_clientes' => 'nullable|string', 
             'incluir_sin_id' => 'nullable|boolean',
-            'orden_clientes' => 'nullable|string|in:id_asc,id_desc,nombre_asc,nombre_desc'
+            'orden_clientes' => 'nullable|string|in:id_asc,id_desc,nombre_asc,nombre_desc',
+            'filtro_especial' => 'nullable|boolean' // Validación de la nueva bandera
         ]);
 
         if ($validator->fails()) {
@@ -32,11 +33,15 @@ class AromasClienteController extends Controller
             
         $incluirSinId = $request->boolean('incluir_sin_id', true); 
         $orden = $request->input('orden_clientes');
+        
+        // Capturamos el estado del nuevo filtro
+        $filtroEspecial = $request->boolean('filtro_especial', false); 
 
         $listaCompleta = [];
 
-        $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaCompleta, $incluirSinId) {
-            (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, $incluirSinId) {
+        // Pasamos la variable $filtroEspecial al contexto de los callbacks usando 'use'
+        $this->procesarArchivoSeguro($request->file('clientes'), function ($ruta) use (&$listaCompleta, $incluirSinId, $filtroEspecial) {
+            (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, $incluirSinId, $filtroEspecial) {
                 
                 $idRaw = $linea[0] ?? '';
                 if ($idRaw === 'Clientes' || $idRaw === 'ID' || $idRaw === '') {
@@ -51,10 +56,22 @@ class AromasClienteController extends Controller
                     return mb_check_encoding($texto, 'UTF-8') ? $texto : mb_convert_encoding($texto, 'UTF-8', 'ISO-8859-1');
                 };
 
-                // Recuperación dinámica de columnas desbordadas (tags divididos por comas sin comillas)
+                // Recuperación dinámica de columnas desbordadas
                 $totalCols = count($linea);
                 $tagsRaw = $totalCols > 28 ? implode(', ', array_slice($linea, 26, $totalCols - 27)) : ($linea[26] ?? '');
                 $tipoRaw = $totalCols > 28 ? ($linea[$totalCols - 1] ?? '') : ($linea[27] ?? '');
+
+                // Limpiamos las variables objetivo ANTES de construir el array final
+                $grupoDescuento = $limpiarTexto($linea[24] ?? '');
+                $tagsLimpios = $limpiarTexto($tagsRaw);
+
+                // LÓGICA DEL FILTRO ESPECIAL
+                if ($filtroEspecial) {
+                    // Descartar si GRUPO DESCUENTO no está vacío O si TAGS está vacío
+                    if ($grupoDescuento !== '' || $tagsLimpios === '') {
+                        return; // Early return para optimizar procesamiento
+                    }
+                }
 
                 $listaCompleta[] = [
                     'ID' => $id,
@@ -81,9 +98,9 @@ class AromasClienteController extends Controller
                     'PARTE_RELACIONAL' => (int)$limpiarTexto($linea[21] ?? '0'),
                     'REGIMEN_FISCAL' => $limpiarTexto($linea[22] ?? ''),
                     'USO_DE_CFDI' => $limpiarTexto($linea[23] ?? ''),
-                    'GRUPO_DESCUENTO' => $limpiarTexto($linea[24] ?? ''),
+                    'GRUPO_DESCUENTO' => $grupoDescuento, // Reutilizamos variable limpia
                     'VARIABLE_CONTABLE' => $limpiarTexto($linea[25] ?? ''),
-                    'TAGS' => $limpiarTexto($tagsRaw),
+                    'TAGS' => $tagsLimpios, // Reutilizamos variable limpia
                     'TIPO' => $limpiarTexto($tipoRaw)
                 ];
             });

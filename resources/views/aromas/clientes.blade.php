@@ -39,15 +39,14 @@
     @csrf
 
     <div class="bg-dark-800 border border-dark-700 p-6 rounded-xl flex flex-col lg:flex-row gap-8 shadow-lg">
-        
+
         <div class="w-full lg:w-1/3 flex flex-col gap-6">
-            <x-upload-area 
-                id="clientes" 
-                name="clientes" 
-                title="Subir CSV Clientes" 
-                colorTheme="yellow" 
-                accept=".csv,.txt"
-            />
+            <x-upload-area
+                id="clientes"
+                name="clientes"
+                title="Subir CSV Clientes"
+                colorTheme="yellow"
+                accept=".csv,.txt" />
 
             <div class="bg-dark-900 border border-dark-700 p-4 rounded-lg">
                 <label class="flex items-start space-x-3 cursor-pointer group">
@@ -56,6 +55,12 @@
                         <span class="text-sm font-bold text-gray-300 group-hover:text-white transition">Incluir Prospectos</span>
                         <span class="text-[10px] text-dark-muted">Exporta clientes que aún no tienen ID asignado.</span>
                     </div>
+                </label>
+            </div>
+            <div class="mt-4 flex items-center space-x-2 bg-dark-900 p-3 rounded border border-dark-700 w-fit">
+                <input type="checkbox" id="check-filtro-especial" class="accent-yellow-500 w-5 h-5 cursor-pointer">
+                <label for="check-filtro-especial" class="text-sm text-gray-300 font-bold cursor-pointer select-none">
+                    Exclusivo: Sin Grupo Descuento y Con Tags
                 </label>
             </div>
 
@@ -88,7 +93,7 @@
                     Seleccionar Todas
                 </button>
             </div>
-            
+
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 overflow-y-auto custom-scroll pr-2 flex-1 max-h-[400px]">
                 @foreach(['ID', 'NOMBRE', 'DIRECCION_FISCAL', 'COLONIA_FISCAL', 'MUNICIPIO_FISCAL', 'CP_FISCAL', 'ESTADO_FISCAL', 'PAIS_FISCAL', 'DIRECCION_CONTACTO', 'COLONIA_CONTACTO', 'MUNICIPIO_CONTACTO', 'ESTADO_CONTACTO', 'PAIS_CONTACTO', 'CP_CONTACTO', 'RFC', 'TELEFONO', 'EMAIL', 'LIMITE_CREDITO', 'CREDITO_DISPONIBLE', 'DIAS_CHEQUE_POSTFECHADO', 'DIAS_VENCIMIENTO', 'PARTE_RELACIONAL', 'REGIMEN_FISCAL', 'USO_DE_CFDI', 'GRUPO_DESCUENTO', 'VARIABLE_CONTABLE', 'TAGS', 'TIPO'] as $col)
                 <label class="flex items-center space-x-2 bg-dark-900 p-2.5 rounded border border-dark-700 cursor-pointer hover:border-yellow-500/50 transition select-none group">
@@ -98,7 +103,7 @@
                 @endforeach
             </div>
         </div>
-        
+
     </div>
 </form>
 @endsection
