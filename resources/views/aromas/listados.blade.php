@@ -78,6 +78,12 @@
                     </label>
                     <p class="text-[10px] text-dark-muted mt-1 ml-6">Omite automáticamente del Excel todos los productos que tengan 0 en existencia.</p>
                 </div>
+                <div class="col-span-1 md:col-span-2 bg-dark-900 p-4 rounded-xl border border-dark-700 flex flex-col sm:flex-row gap-4">
+                    <label class="flex items-center space-x-3 cursor-pointer group">
+                        <input type="checkbox" name="filtro_relojes" id="check-filtro-relojes" value="1" class="w-5 h-5 text-purple-500 bg-dark-800 border-dark-600 rounded focus:ring-purple-500 focus:ring-2">
+                        <span class="text-sm font-medium text-gray-300 group-hover:text-white transition">Solo Relojes (Nombre inicia con 'R')</span>
+                    </label>
+                </div>
 
                 <div>
                     <label class="block text-sm font-bold text-white mb-2">2. Selecciona Columnas (En orden):</label>
@@ -113,7 +119,9 @@
     <div class="bg-dark-800 border border-orange-500/50 w-full max-w-5xl rounded-xl shadow-2xl max-h-[90vh] flex flex-col">
         <div class="p-6 border-b border-dark-700 flex justify-between items-center bg-dark-800 rounded-t-xl z-10">
             <h2 class="text-2xl font-bold text-orange-400 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
                 Advertencia: Inconsistencias en Wizerp Detectadas
             </h2>
             <button onclick="cerrarModalInconsistencias()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
@@ -121,7 +129,7 @@
 
         <div class="p-6 overflow-y-auto custom-scroll flex-1">
             <p class="text-gray-300 mb-4 text-sm">Se han detectado productos con <span class="text-orange-400 font-bold">existencia mayor a 0 pero con Precio/Margen 0</span> en los archivos base. Por favor, verifica estos datos en el sistema para evitar fugas.</p>
-            
+
             <div class="bg-dark-900 border border-dark-700 rounded-lg overflow-hidden">
                 <table class="w-full text-left text-sm text-gray-300">
                     <thead class="bg-dark-800 text-dark-muted uppercase text-[10px] font-bold">
@@ -133,14 +141,16 @@
                         </tr>
                     </thead>
                     <tbody id="tabla-inconsistencias-body" class="divide-y divide-dark-700">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
         </div>
 
         <div class="p-4 border-t border-dark-700 flex justify-between items-center bg-dark-800 rounded-b-xl">
             <button type="button" onclick="copiarTablaInconsistencias()" class="px-4 py-2 bg-dark-700 hover:bg-dark-600 text-white font-bold rounded-lg transition flex items-center gap-2 text-sm border border-dark-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
                 Copiar Tabla
             </button>
             <div class="flex gap-3">
@@ -173,29 +183,26 @@
     </h2>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <x-upload-area 
-            id="existencias" 
-            name="existencias" 
-            title="1. Existencias *" 
-            colorTheme="aromas" 
-            instructions="<span class='text-aromas-main font-bold'>Ruta:</span> Almacenes > Inventarios<br><span class='text-aromas-main font-bold'>Filtros:</span> Seleccionar almacen (CEDIS, TIENDA o REMATES), Existencia diferente o igual a 0<br><span class='text-aromas-main font-bold'>Opciones:</span> EXCEL > Exportar en CSV." 
-        />
+        <x-upload-area
+            id="existencias"
+            name="existencias"
+            title="1. Existencias *"
+            colorTheme="aromas"
+            instructions="<span class='text-aromas-main font-bold'>Ruta:</span> Almacenes > Inventarios<br><span class='text-aromas-main font-bold'>Filtros:</span> Seleccionar almacen (CEDIS, TIENDA o REMATES), Existencia diferente o igual a 0<br><span class='text-aromas-main font-bold'>Opciones:</span> EXCEL > Exportar en CSV." />
 
-        <x-upload-area 
-            id="precios" 
-            name="precios" 
-            title="2. Precios" 
-            colorTheme="green" 
-            instructions="<span class='text-blue-400 font-bold'>Ruta:</span> Almacen > Productos<br><span class='text-blue-400 font-bold'>Operaciones:</span> Exportar lista de precios<br><span class='text-blue-400 font-bold'>Opciones:</span> Guardar en carpeta." 
-        />
+        <x-upload-area
+            id="precios"
+            name="precios"
+            title="2. Precios"
+            colorTheme="green"
+            instructions="<span class='text-blue-400 font-bold'>Ruta:</span> Almacen > Productos<br><span class='text-blue-400 font-bold'>Operaciones:</span> Exportar lista de precios<br><span class='text-blue-400 font-bold'>Opciones:</span> Guardar en carpeta." />
 
-        <x-upload-area 
-            id="costos" 
-            name="costos" 
-            title="3. Costos" 
-            colorTheme="purple" 
-            instructions="<span class='text-purple-400 font-bold'>Ruta:</span> Almacenes > Costos<br><span class='text-purple-400 font-bold'>Operaciones:</span> Seleccionar Opcion Excel<br><span class='text-purple-400 font-bold'>Opciones:</span> Guardar en CSV." 
-        />
+        <x-upload-area
+            id="costos"
+            name="costos"
+            title="3. Costos"
+            colorTheme="purple"
+            instructions="<span class='text-purple-400 font-bold'>Ruta:</span> Almacenes > Costos<br><span class='text-purple-400 font-bold'>Operaciones:</span> Seleccionar Opcion Excel<br><span class='text-purple-400 font-bold'>Opciones:</span> Guardar en CSV." />
     </div>
 
     <div class="mb-10">
@@ -231,12 +238,12 @@
             @foreach($listasPersonalizadas as $lista)
             @php
             $colors = [
-                'blue' => 'text-blue-400 hover:border-blue-500 group-hover:text-blue-300',
-                'emerald' => 'text-emerald-400 hover:border-emerald-500 group-hover:text-emerald-300',
-                'purple' => 'text-purple-400 hover:border-purple-500 group-hover:text-purple-300',
-                'orange' => 'text-orange-400 hover:border-orange-500 group-hover:text-orange-300',
-                'pink' => 'text-pink-400 hover:border-pink-500 group-hover:text-pink-300',
-                'red' => 'text-red-400 hover:border-red-500 group-hover:text-red-300',
+            'blue' => 'text-blue-400 hover:border-blue-500 group-hover:text-blue-300',
+            'emerald' => 'text-emerald-400 hover:border-emerald-500 group-hover:text-emerald-300',
+            'purple' => 'text-purple-400 hover:border-purple-500 group-hover:text-purple-300',
+            'orange' => 'text-orange-400 hover:border-orange-500 group-hover:text-orange-300',
+            'pink' => 'text-pink-400 hover:border-pink-500 group-hover:text-pink-300',
+            'red' => 'text-red-400 hover:border-red-500 group-hover:text-red-300',
             ];
             $claseColor = $colors[$lista->color] ?? $colors['blue'];
             @endphp
@@ -320,14 +327,13 @@
 <script>
     window.GeliaConfig = {
         routes: {
+            // Asegúrate de que los nombres de las rutas coincidan con tu archivo web.php
             generar: "{{ route('gelia.generar') }}",
             guardar: "{{ route('gelia.guardar') }}",
             actualizar: "{{ route('gelia.actualizar', ['id' => ':id']) }}",
-            eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}",
-            // NUEVO: Ruta para descargar el temporal generado tras saltar validaciones
-            descargar_temporal: "{{ route('gelia.descargar-temporal') }}" 
+            eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}"
         },
-        customLists: {!! json_encode($listasPersonalizadas ?? []) !!}
+        customLists: @json($listasPersonalizadas ?? [])
     };
 </script>
 @endpush

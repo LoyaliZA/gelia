@@ -10,11 +10,9 @@ use App\Models\CustomList;
 
 class AromasListasController extends Controller
 {
-    // Muestra la vista de listados cargando las configuraciones guardadas
     public function index()
     {
         $listasPersonalizadas = CustomList::where('active', true)->get();
-        // Apuntamos a la nueva ruta y nombre que sugieres
         return view('aromas.listados', compact('listasPersonalizadas')); 
     }
 
@@ -28,6 +26,7 @@ class AromasListasController extends Controller
             'archivos_requeridos' => 'required|array',
             'columnas_exportar' => 'required|string',
             'nombre_archivo_salida' => 'required|string|max:50',
+            'filtro_relojes' => 'nullable|boolean' // Validación añadida
         ]);
 
         if ($validator->fails()) {
@@ -36,6 +35,7 @@ class AromasListasController extends Controller
 
         $columnasArray = explode(',', $request->columnas_exportar);
         $soloConExistencia = $request->boolean('solo_con_existencia');
+        $filtroRelojes = $request->boolean('filtro_relojes'); // Captura del booleano
 
         $lista = CustomList::create([
             'nombre_creador' => $request->nombre_creador,
@@ -46,6 +46,7 @@ class AromasListasController extends Controller
             'columnas_exportar' => $columnasArray,
             'nombre_archivo_salida' => strtoupper($request->nombre_archivo_salida),
             'solo_con_existencia' => $soloConExistencia,
+            'filtro_relojes' => $filtroRelojes, // Guardado en DB
             'active' => true
         ]);
 
@@ -70,6 +71,7 @@ class AromasListasController extends Controller
             'archivos_requeridos' => 'required|array',
             'columnas_exportar' => 'required|string',
             'nombre_archivo_salida' => 'required|string|max:50',
+            'filtro_relojes' => 'nullable|boolean' // Validación añadida
         ]);
 
         if ($validator->fails()) {
@@ -78,6 +80,7 @@ class AromasListasController extends Controller
 
         $columnasArray = explode(',', $request->columnas_exportar);
         $soloConExistencia = $request->boolean('solo_con_existencia');
+        $filtroRelojes = $request->boolean('filtro_relojes'); // Captura del booleano
 
         $lista->update([
             'nombre_creador' => $request->nombre_creador,
@@ -88,6 +91,7 @@ class AromasListasController extends Controller
             'columnas_exportar' => $columnasArray,
             'nombre_archivo_salida' => strtoupper($request->nombre_archivo_salida),
             'solo_con_existencia' => $soloConExistencia,
+            'filtro_relojes' => $filtroRelojes, // Actualización en DB
         ]);
 
         Log::info("AROMAS - Lista editada: '{$lista->titulo_lista}' por {$lista->nombre_creador}.");
@@ -194,7 +198,6 @@ class AromasListasController extends Controller
 
         $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique, $tienePrecios) {
             
-            // CORRECCIÓN 1: Pasar closure a import() para forzar el uso de Generators
             (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique, $tienePrecios) {
                 if (!isset($linea[4]) || $linea[4] == 'Código') return;
                 
@@ -214,6 +217,14 @@ class AromasListasController extends Controller
                 $descripcion = $linea[5] ?? '';
                 $marca = $linea[6] ?? '';
                 
+                // Lógica inyectada para descartar productos si el filtro relojes está activo
+                if ($esListaPersonalizadaBD && $configuracionBD->filtro_relojes) {
+                    $primeraLetra = strtoupper(substr(ltrim($descripcion), 0, 1));
+                    if ($primeraLetra !== 'R') {
+                        return;
+                    }
+                }
+
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
                 $costoWizerp = $diccionarioCostosWizerp[$skuBuscador] ?? 0.0;
 
@@ -256,7 +267,6 @@ class AromasListasController extends Controller
 
         // 6. ORDENAMIENTO (Optimizado a nivel C)
         if (in_array('Descripcion', $columnasSeleccionadas) && !empty($listaCompleta)) {
-            // CORRECCIÓN 2: array_multisort en lugar de usort
             $descripciones = array_column($listaCompleta, 'Descripcion');
             array_multisort($descripciones, SORT_ASC, SORT_STRING | SORT_FLAG_CASE, $listaCompleta);
         }
@@ -271,7 +281,6 @@ class AromasListasController extends Controller
             }
 
             $tempPath = $tempDir . '/' . $tempFilename;
-            // CORRECCIÓN 3: Pasar array puro en lugar de collect()
             (new FastExcel($listaCompleta))->export($tempPath);
 
             return response()->json([
@@ -282,30 +291,7 @@ class AromasListasController extends Controller
             ]);
         }
 
-        // CORRECCIÓN 3: Pasar array puro en lugar de collect()
         return (new FastExcel($listaCompleta))->download($nombreArchivo);
-
-        // 7. DESCARGA DIFERIDA CON ESTADO (Stateful Deferred Download)
-        if (count($inconsistencias) > 0) {
-            $tempFilename = 'excel_temp_' . uniqid() . '.xlsx';
-            $tempDir = storage_path('app/temp');
-            
-            if (!file_exists($tempDir)) {
-                mkdir($tempDir, 0755, true);
-            }
-
-            $tempPath = $tempDir . '/' . $tempFilename;
-            (new FastExcel(collect($listaCompleta)))->export($tempPath);
-
-            return response()->json([
-                'requiere_confirmacion' => true,
-                'inconsistencias' => $inconsistencias,
-                'temp_file' => $tempFilename,
-                'nombre_descarga' => $nombreArchivo
-            ]);
-        }
-
-        return (new FastExcel(collect($listaCompleta)))->download($nombreArchivo);
     }
 
     public function descargarTemporal(Request $request)

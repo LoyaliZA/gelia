@@ -19,6 +19,7 @@ class CustomList extends Model
         'nombre_archivo_salida',
         'active',
         'solo_con_existencia', // Nueva columna para filtrar solo productos con existencia
+        'filtro_relojes', // Nueva columna para filtrar solo productos que inician con 'R'
     ];
 
     // Esto hace la magia: convierte el JSON de la BD a Array de PHP automáticamente

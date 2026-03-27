@@ -39,6 +39,7 @@ window.abrirModalCrear = function () {
     });
     document.getElementById('check-solo-existencia').checked = false;
     document.getElementById('input-columnas-exportar').value = '';
+    document.getElementById('check-filtro-relojes').checked = false; 
     toggleModal(true);
 }
 
@@ -61,12 +62,15 @@ window.abrirModalEdicion = function (event, id) {
     document.querySelector('input[name="archivos_requeridos[]"][value="precios"]').checked = reqs.includes('precios');
     document.querySelector('input[name="archivos_requeridos[]"][value="costos"]').checked = reqs.includes('costos');
 
-    document.getElementById('check-solo-existencia').checked = lista.solo_con_existencia;
+    // POBLADO DE FILTROS: Asignación de valores existentes en la base de datos
+    document.getElementById('check-solo-existencia').checked = !!lista.solo_con_existencia;
+    document.getElementById('check-filtro-relojes').checked = !!lista.filtro_relojes; // NUEVO
 
     ordenCreacion = [];
     document.querySelectorAll('[id^="badge-creacion-"]').forEach(b => b.classList.add('hidden'));
     document.querySelectorAll('#form-crear-lista input[type="checkbox"]').forEach(c => {
-        if (c.id !== 'check-solo-existencia' && c.name !== 'archivos_requeridos[]') c.checked = false;
+        // EXCLUSIÓN DE LIMPIEZA: Evitamos que el reset global borre nuestros filtros
+        if (c.id !== 'check-solo-existencia' && c.id !== 'check-filtro-relojes' && c.name !== 'archivos_requeridos[]') c.checked = false;
     });
 
     const colExportar = lista.columnas_exportar || [];
@@ -161,6 +165,11 @@ window.guardarNuevaLista = async function (e) {
 
     const form = e.target;
     const formData = new FormData(form);
+    
+    // EXTRACCIÓN EXPLÍCITA DE BOOLEANOS: Garantiza que siempre se envíen '1' o '0'
+    formData.set('solo_con_existencia', document.getElementById('check-solo-existencia').checked ? '1' : '0');
+    formData.set('filtro_relojes', document.getElementById('check-filtro-relojes').checked ? '1' : '0');
+
     const idLista = document.getElementById('lista-id').value;
     const url = idLista ? window.GeliaConfig.routes.actualizar.replace(':id', idLista) : window.GeliaConfig.routes.guardar;
 
@@ -172,6 +181,7 @@ window.guardarNuevaLista = async function (e) {
         const response = await fetch(url, {
             method: 'POST',
             body: formData,
+            credentials: 'same-origin', // Prevención de CORS/Tailscale 419
             headers: {
                 'X-CSRF-TOKEN': tokenCSRF,
                 'Accept': 'application/json'
@@ -258,6 +268,7 @@ window.procesarSolicitud = async function (tipo) {
         const response = await fetch(urlGenerar, {
             method: 'POST',
             body: formData,
+            credentials: 'same-origin', // Prevención de CORS/Tailscale 419
             headers: { 
                 'X-CSRF-TOKEN': tokenCSRF, 
                 'Accept': 'application/json' 
