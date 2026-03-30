@@ -45,6 +45,8 @@
                             class="text-dark-muted hover:text-aromas-main px-3 py-2 rounded-md text-sm font-medium transition-colors">Aromas</a>
                         <a href="{{ route('bellaroma.index') }}"
                             class="text-dark-muted hover:text-bella-main px-3 py-2 rounded-md text-sm font-medium transition-colors">Bellaroma</a>
+                        <a href="{{ route('woocommerce.index') }}"
+                            class="text-dark-muted hover:text-woocommerce-main px-3 py-2 rounded-md text-sm font-medium transition-colors">WooCommerce</a>
                     </div>
                 </div>
 

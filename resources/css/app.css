@@ -56,4 +56,9 @@ details>summary::-webkit-details-marker {
     --color-bella-dark: #4c0519;
     --color-bella-main: #e11d48;
     --color-bella-light: #fb7185;
+
+    /* Departamento: WooComerce (tonos violetas y azules) */
+    --color-woocommerce-dark: #0f172a;
+    --color-woocommerce-main: #3b82f6;
+    --color-woocommerce-light: #93c5fd;
 }

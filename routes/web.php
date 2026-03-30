@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AromasListasController; // <-- NUEVO CEREBRO PRINCIPAL
 use App\Http\Controllers\BellaromaController;
 use App\Http\Controllers\AromasClienteController;
+use App\Http\Controllers\BellaromaCargaPreciosController; // <-- NUEVO CONTROLADOR PARA CARGA DE PRECIOS DESDE CSV
 use App\Http\Controllers\AromasGastoController;
 use App\Http\Controllers\AromasTransaccionController;
 use App\Http\Controllers\AromasAvisosController; // <-- NUEVO MÓDULO DE AVISOS DE MERCANCÍA
@@ -66,4 +67,28 @@ Route::prefix('bellaroma')->group(function () {
     Route::delete('/eliminar/{id}', [BellaromaController::class, 'eliminar'])->name('bellaroma.eliminar');
     Route::post('/configuracion/verificar', [BellaromaController::class, 'verificarPin'])->name('bellaroma.config.verificar');
     Route::post('/configuracion/guardar', [BellaromaController::class, 'guardarConfiguracion'])->name('bellaroma.config.guardar');
+
+    
+});
+
+// =========================================================
+// MÓDULO WOOCOMMERCE | Sincronización de Precios
+// =========================================================
+Route::prefix('woocommerce')->group(function () {
+    // 1. Interfaz Principal
+    Route::get('/', [BellaromaCargaPreciosController::class, 'index'])->name('woocommerce.index');
+    
+    // 2. Seguridad y Configuración Dinámica
+    Route::post('/verificar', [BellaromaCargaPreciosController::class, 'verificarPin'])->name('woocommerce.verificar');
+    Route::post('/configuracion/guardar', [BellaromaCargaPreciosController::class, 'guardarConfiguracion'])->name('woocommerce.config.guardar');
+    
+    // 3. Sincronización de Base de Datos de Productos (El CSV de Woo)
+    Route::post('/productos/sincronizar', [BellaromaCargaPreciosController::class, 'sincronizarProductos'])->name('woocommerce.productos.sincronizar');
+    
+    // 4. Procesamiento Diario (Solo subes el Excel de Wizerp)
+    Route::post('/procesar', [BellaromaCargaPreciosController::class, 'procesar'])->name('woocommerce.procesar');
+    
+    // 5. Gestión del Historial Local
+    Route::get('/descargar/{id}', [BellaromaCargaPreciosController::class, 'descargar'])->name('woocommerce.descargar');
+    Route::delete('/eliminar/{id}', [BellaromaCargaPreciosController::class, 'eliminar'])->name('woocommerce.eliminar');
 });
