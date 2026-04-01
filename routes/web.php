@@ -8,6 +8,7 @@ use App\Http\Controllers\BellaromaCargaPreciosController; // <-- NUEVO CONTROLAD
 use App\Http\Controllers\AromasGastoController;
 use App\Http\Controllers\AromasTransaccionController;
 use App\Http\Controllers\AromasAvisosController; // <-- NUEVO MÓDULO DE AVISOS DE MERCANCÍA
+use App\Http\Controllers\AuthController; // <-- CONTROLADOR DE AUTENTICACIÓN
 
 // =========================================================
 // RUTA PRINCIPAL (Home - Selección de Departamento)
@@ -20,7 +21,7 @@ Route::get('/', function () {
 // MÓDULO AROMAS (Dividido por Funcionalidad)
 // =========================================================
 Route::prefix('aromas')->group(function () {
-    
+
     // 1. MÓDULO DE LISTADOS E INVENTARIOS (El nuevo Core)
     // Conservamos los names originales (gelia.*) temporalmente por retrocompatibilidad con las otras vistas
     Route::get('/', [AromasListasController::class, 'index'])->name('gelia.index');
@@ -28,7 +29,7 @@ Route::prefix('aromas')->group(function () {
     Route::post('/generar', [AromasListasController::class, 'generar'])->name('gelia.generar');
     Route::delete('/eliminar-lista/{id}', [AromasListasController::class, 'eliminarLista'])->name('gelia.eliminar');
     Route::post('/actualizar-lista/{id}', [AromasListasController::class, 'actualizarLista'])->name('gelia.actualizar');
-    
+
     // NUEVA RUTA: Descarga Diferida de Excel con Inconsistencias
     Route::get('/descargar-temporal', [AromasListasController::class, 'descargarTemporal'])->name('gelia.descargar-temporal');
 
@@ -49,7 +50,7 @@ Route::prefix('aromas')->group(function () {
     // ---------------------------------------------------------
     Route::get('/transacciones', [AromasTransaccionController::class, 'index'])->name('aromas.transacciones.index');
     Route::post('/transacciones/procesar', [AromasTransaccionController::class, 'procesar'])->name('aromas.transacciones.procesar');
-    
+
     // ---------------------------------------------------------
     // 5. MÓDULO DE AVISOS DE MERCANCÍA (Cruce de Inventario)
     // ---------------------------------------------------------
@@ -67,28 +68,47 @@ Route::prefix('bellaroma')->group(function () {
     Route::delete('/eliminar/{id}', [BellaromaController::class, 'eliminar'])->name('bellaroma.eliminar');
     Route::post('/configuracion/verificar', [BellaromaController::class, 'verificarPin'])->name('bellaroma.config.verificar');
     Route::post('/configuracion/guardar', [BellaromaController::class, 'guardarConfiguracion'])->name('bellaroma.config.guardar');
-
-    
 });
+
+// =========================================================
+// RUTAS DE SEGURIDAD (LOGIN / LOGOUT)
+// =========================================================
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // =========================================================
 // MÓDULO WOOCOMMERCE | Sincronización de Precios
 // =========================================================
-Route::prefix('woocommerce')->group(function () {
+Route::prefix('woocommerce')->middleware('auth')->group(function () {
     // 1. Interfaz Principal
     Route::get('/', [BellaromaCargaPreciosController::class, 'index'])->name('woocommerce.index');
-    
+
     // 2. Seguridad y Configuración Dinámica
     Route::post('/verificar', [BellaromaCargaPreciosController::class, 'verificarPin'])->name('woocommerce.verificar');
     Route::post('/configuracion/guardar', [BellaromaCargaPreciosController::class, 'guardarConfiguracion'])->name('woocommerce.config.guardar');
-    
+
     // 3. Sincronización de Base de Datos de Productos (El CSV de Woo)
     Route::post('/productos/sincronizar', [BellaromaCargaPreciosController::class, 'sincronizarProductos'])->name('woocommerce.productos.sincronizar');
-    
+
     // 4. Procesamiento Diario (Solo subes el Excel de Wizerp)
     Route::post('/procesar', [BellaromaCargaPreciosController::class, 'procesar'])->name('woocommerce.procesar');
-    
+
     // 5. Gestión del Historial Local
     Route::get('/descargar/{id}', [BellaromaCargaPreciosController::class, 'descargar'])->name('woocommerce.descargar');
     Route::delete('/eliminar/{id}', [BellaromaCargaPreciosController::class, 'eliminar'])->name('woocommerce.eliminar');
+
+    // Ruta para la prueba de concepto de la API
+    Route::get('/api/test-productos', [BellaromaCargaPreciosController::class, 'testApiGetProducts'])->name('woocommerce.api.test');
+    Route::post('/api/actualizar-prueba', [BellaromaCargaPreciosController::class, 'actualizarPrecioPrueba'])->name('woocommerce.api.update');
+    Route::post('/api/descargar-precios', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'descargarPreciosApi'])->name('woocommerce.api.descargar');
+    // ¡NUEVA! Ruta para consultar el progreso (esta es la que causó el 404)
+    Route::get('/api/progreso/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'consultarProgreso'])->name('woocommerce.api.progreso');
+    Route::post('/api/carga-masiva', [BellaromaCargaPreciosController::class, 'iniciarCargaMasiva'])->name('woocommerce.api.carga-masiva');
+    Route::put('/api/producto/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'actualizarPrecioIndividual'])->name('woocommerce.api.actualizar-individual');
+    // Vista del Centro de Auditoría
+    Route::get('/auditoria', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'auditoriaIndex'])->name('woocommerce.auditoria');
+    
+    // Descarga del CSV (El que creamos en el paso anterior)
+    Route::get('/auditoria/descargar/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'descargarAuditoria'])->name('woocommerce.auditoria.descargar');
 });

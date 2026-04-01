@@ -80,6 +80,29 @@ services:
             retries: 3
             timeout: 5s
 
+    # --- WORKER DE COLAS (El Trabajador Inmortal) ---
+    queue-worker:
+        build:
+            context: './docker/8.5'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: 'sail-8.5/app'
+        restart: unless-stopped
+        # AQUÍ ESTÁ LA MAGIA: Sobrescribimos el comando por defecto para que solo procese colas
+        command: php artisan queue:work --tries=3 --timeout=600 
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+            TZ: 'America/Mexico_City'
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - mysql
+            - redis
+
 networks:
     sail:
         driver: bridge
@@ -87,3 +110,4 @@ networks:
 volumes:
     sail-mysql:
     sail-redis:
+
