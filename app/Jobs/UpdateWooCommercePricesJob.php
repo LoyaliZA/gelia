@@ -35,8 +35,8 @@ class UpdateWooCommercePricesJob implements ShouldQueue
 
         $log->update(['estado' => 'en_proceso']);
 
-        $config = WoocommerceConfig::where('llave', 'iva')->first();
-        $iva = $config ? (float)$config->valor : 1.16;
+        //$config = WoocommerceConfig::where('llave', 'iva')->first();
+        //$iva = $config ? (float)$config->valor : 1.16;
         $margenes = WoocommerceMargin::orderBy('precio_min')->get();
 
         $ck = 'ck_dd5b2465b10fb66949a1c1ebde972f7d784abb8c';
@@ -60,9 +60,9 @@ class UpdateWooCommercePricesJob implements ShouldQueue
             $prod = WoocommerceProduct::where('sku', $sku)->first();
 
             if ($prod) {
-                $baseConIva = $precioBase * $iva;
-                $normal = round($baseConIva * $this->getMultiplicador($baseConIva, 'normal', $margenes), 2);
-                $rebaja = round($baseConIva * $this->getMultiplicador($baseConIva, 'rebaja', $margenes), 2);
+                // ELIMINAMOS $baseConIva. Pasamos el costo neto directamente a la fórmula de márgenes.
+                $normal = round($precioBase * $this->getMultiplicador($precioBase, 'normal', $margenes), 2);
+                $rebaja = round($precioBase * $this->getMultiplicador($precioBase, 'rebaja', $margenes), 2);
 
                 // VALIDACIÓN ESTRICTA: Prevenir actualización si el precio calculado es 0 o inválido
                 if (empty($normal) || $normal <= 0) {
