@@ -18,6 +18,12 @@
             </svg>
             Auditoría
         </a>
+        <a href="{{ route('woocommerce.alertas') }}" class="flex items-center gap-2 px-5 py-2.5 bg-red-900/20 border border-red-600 rounded-xl text-red-500 font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Alertas
+        </a>
 
         <button onclick="abrirModalPin()" class="flex items-center gap-2 px-5 py-2.5 bg-dark-800 border border-dark-600 rounded-xl text-white font-bold hover:border-purple-500 transition-all shadow-sm hover:shadow-purple-500/20">
             <svg class="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,15 +96,48 @@
     </div>
 
     <div class="lg:col-span-7 space-y-6">
-        <div id="status-api-container" class="hidden bg-dark-800 border border-green-500/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-6">
+        @php
+        // Consultamos rápidamente si hay un proceso zombie activo
+        $procesoAtascado = \App\Models\WoocommerceSyncLog::where('estado', 'en_proceso')->first();
+        @endphp
+
+        <div id="status-api-container" class="{{ $procesoAtascado ? '' : 'hidden' }} bg-dark-800 border border-green-500/30 rounded-2xl p-6 shadow-2xl relative overflow-hidden mb-6">
             <div class="relative z-10">
-                <h3 class="text-sm font-bold text-green-400 uppercase tracking-widest mb-4">Sincronización en curso</h3>
+
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold text-green-400 uppercase tracking-widest">Sincronización en curso</h3>
+
+                    @if($procesoAtascado)
+                    <div class="flex gap-2">
+                        <form action="{{ route('woocommerce.sync.reanudar', $procesoAtascado->id) }}" method="POST">
+                            @csrf
+                            <button type="submit" class="bg-blue-900/40 text-blue-400 border border-blue-500 hover:bg-blue-600 hover:text-white text-xs font-bold py-1.5 px-3 rounded-lg transition shadow-sm">
+                                Reanudar Proceso
+                            </button>
+                        </form>
+
+                        <form action="{{ route('woocommerce.sync.cancelar', $procesoAtascado->id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de cancelar definitivamente este proceso?');">
+                            @csrf
+                            <button type="submit" class="bg-red-900/40 text-red-500 border border-red-500 hover:bg-red-600 hover:text-white text-xs font-bold py-1.5 px-3 rounded-lg transition shadow-sm">
+                                Detener Proceso
+                            </button>
+                        </form>
+                    </div>
+                    @endif
+                </div>
+
                 <div class="w-full bg-dark-900 rounded-full h-3 mb-4 border border-dark-700">
-                    <div id="barra-progreso" class="bg-gradient-to-r from-green-600 to-emerald-500 h-full transition-all duration-700 rounded-full" style="width: 0%"></div>
+                    <div id="barra-progreso" class="bg-gradient-to-r from-green-600 to-emerald-500 h-full transition-all duration-700 rounded-full"
+                        style="width: {{ $procesoAtascado ? ($procesoAtascado->procesados / max($procesoAtascado->total_productos, 1)) * 100 : 0 }}%">
+                    </div>
                 </div>
                 <div class="flex justify-between text-xs font-mono text-gray-400">
-                    <span id="conteo-productos">0 / 0</span>
-                    <span id="porcentaje-texto">0%</span>
+                    <span id="conteo-productos">
+                        {{ $procesoAtascado ? $procesoAtascado->procesados . ' / ' . $procesoAtascado->total_productos : '0 / 0' }}
+                    </span>
+                    <span id="porcentaje-texto">
+                        {{ $procesoAtascado ? round(($procesoAtascado->procesados / max($procesoAtascado->total_productos, 1)) * 100) : 0 }}%
+                    </span>
                 </div>
             </div>
         </div>
@@ -158,7 +197,7 @@
     <div class="overflow-x-auto">
         <table class="w-full text-sm text-left">
             @if($procesoActivo)
-                <input type="hidden" id="active-log-id" value="{{ $procesoActivo->id }}">
+            <input type="hidden" id="active-log-id" value="{{ $procesoActivo->id }}">
             @endif
 
             <thead class="text-xs text-gray-400 bg-dark-900/50 uppercase font-bold">
@@ -167,7 +206,9 @@
                         <a href="{{ request()->fullUrlWithQuery(['sort' => 'sku', 'order' => $order === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-white transition">
                             SKU / ID
                             @if($sort === 'sku')
-                                <svg class="w-4 h-4 {{ $order === 'desc' ? 'rotate-180' : '' }} transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                            <svg class="w-4 h-4 {{ $order === 'desc' ? 'rotate-180' : '' }} transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                            </svg>
                             @endif
                         </a>
                     </th>
@@ -175,7 +216,9 @@
                         <a href="{{ request()->fullUrlWithQuery(['sort' => 'nombre', 'order' => $order === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center gap-1 hover:text-white transition">
                             Nombre del Producto
                             @if($sort === 'nombre')
-                                <svg class="w-4 h-4 {{ $order === 'desc' ? 'rotate-180' : '' }} transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                            <svg class="w-4 h-4 {{ $order === 'desc' ? 'rotate-180' : '' }} transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                            </svg>
                             @endif
                         </a>
                     </th>
@@ -183,7 +226,9 @@
                         <a href="{{ request()->fullUrlWithQuery(['sort' => 'precio_normal', 'order' => $order === 'asc' ? 'desc' : 'asc']) }}" class="flex items-center justify-center gap-1 hover:text-white transition">
                             Referencia de Precios
                             @if($sort === 'precio_normal')
-                                <svg class="w-4 h-4 {{ $order === 'desc' ? 'rotate-180' : '' }} transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" /></svg>
+                            <svg class="w-4 h-4 {{ $order === 'desc' ? 'rotate-180' : '' }} transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                            </svg>
                             @endif
                         </a>
                     </th>

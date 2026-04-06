@@ -16,6 +16,7 @@ use App\Models\WoocommerceSyncLog;
 // Importación del Job
 use App\Jobs\UpdateWooCommercePricesJob;
 use App\Jobs\FetchWooCommercePricesJob;
+use Illuminate\Support\Facades\Artisan;
 
 class BellaromaCargaPreciosController extends Controller
 {
@@ -369,5 +370,95 @@ class BellaromaCargaPreciosController extends Controller
         }
 
         return response()->json(['success' => false, 'message' => $response->json('message', 'Error desconocido en API')], 400);
+    }
+
+    // En BellaromaCargaPreciosController.php
+
+    /**
+     * Retorna la vista o los datos de productos con anomalías
+     */
+    public function alertasInventario()
+    {
+        // Criterio: Existe en BD local, no tiene precio asignado, pero lo consideramos activo.
+        // Ajusta la condición de 'stock' si cuentas con esa columna, de lo contrario validamos por precio 0 o nulo.
+        $productosCriticos = WoocommerceProduct::where(function ($query) {
+            $query->whereNull('precio_normal')
+                ->orWhere('precio_normal', '<=', 0);
+        })
+            ->get();
+
+        return view('woocommerce.alertas', compact('productosCriticos'));
+    }
+
+    /**
+     * Acción de emergencia: Ocultar productos sin precio en WooCommerce
+     */
+    public function emergenciaOcultarProductos(Request $request)
+    {
+        $ids = $request->input('productos_ids', []);
+        if (empty($ids)) return response()->json(['error' => 'No hay productos seleccionados'], 400);
+
+        $ck = 'ck_dd5b2465b10fb66949a1c1ebde972f7d784abb8c';
+        $cs = 'cs_b3654aa5868e953a050186d2118c9a76eb9bdbb7';
+
+        $errores = 0;
+
+        foreach ($ids as $id) {
+            $prod = WoocommerceProduct::find($id);
+            if (!$prod) continue;
+
+            $url = $prod->tipo === 'variation'
+                ? "https://www.bellaroma.mx/wp-json/wc/v3/products/{$prod->parent_id}/variations/{$prod->id}"
+                : "https://www.bellaroma.mx/wp-json/wc/v3/products/{$prod->id}";
+
+            // Establecer status a 'draft' (borrador) es más seguro que poner inventario a 0 manualmente
+            $response = Http::withBasicAuth($ck, $cs)->put($url, [
+                'status' => 'draft'
+            ]);
+
+            if (!$response->successful()) {
+                $errores++;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Proceso de emergencia completado. Errores detectados: {$errores}"
+        ]);
+    }
+
+    /**
+     * Seguro manual para cancelar procesos zombie
+     */
+    public function forzarCancelacionSync($id)
+    {
+        $log = WoocommerceSyncLog::findOrFail($id);
+
+        // Solo permitimos cancelar si está atascado
+        if ($log->estado === 'en_proceso') {
+            $log->update([
+                'estado' => 'cancelado',
+                // Opcional: Si tienes una columna de notas/errores
+                // 'error' => 'Cancelado manualmente por el administrador (Kill Switch).'
+            ]);
+
+            return back()->with('success', 'El proceso fantasma fue cancelado exitosamente.');
+        }
+
+        return back()->with('error', 'El proceso no se puede cancelar porque ya finalizó o dio error.');
+    }
+
+    public function reanudarSync($id)
+    {
+        $log = WoocommerceSyncLog::findOrFail($id);
+
+        if ($log->estado === 'en_proceso') {
+            // Ejecuta el comando nativo de Laravel para reintentar los jobs fallidos
+            Artisan::call('queue:retry', ['id' => 'all']);
+
+            return back()->with('success', 'Proceso reanudado. El sistema continuará desde donde se detuvo.');
+        }
+
+        return back()->with('error', 'Solo se pueden reanudar procesos que estén en curso.');
     }
 }

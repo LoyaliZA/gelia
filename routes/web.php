@@ -108,7 +108,21 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
     Route::put('/api/producto/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'actualizarPrecioIndividual'])->name('woocommerce.api.actualizar-individual');
     // Vista del Centro de Auditoría
     Route::get('/auditoria', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'auditoriaIndex'])->name('woocommerce.auditoria');
-    
+
     // Descarga del CSV (El que creamos en el paso anterior)
     Route::get('/auditoria/descargar/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'descargarAuditoria'])->name('woocommerce.auditoria.descargar');
+
+    // PANEL DE ALERTAS WOOCOMMERCE
+    Route::get('/alertas', [BellaromaCargaPreciosController::class, 'alertasInventario'])
+        ->name('woocommerce.alertas');
+
+    // ACCIÓN DE EMERGENCIA (AJAX)
+    Route::post('/emergencia/ocultar', [BellaromaCargaPreciosController::class, 'emergenciaOcultarProductos'])
+        ->name('woocommerce.emergencia');
+
+    Route::post('/sync/{id}/cancelar', [BellaromaCargaPreciosController::class, 'forzarCancelacionSync'])
+    ->name('woocommerce.sync.cancelar');
+
+    Route::post('/sync/{id}/reanudar', [BellaromaCargaPreciosController::class, 'reanudarSync'])
+    ->name('woocommerce.sync.reanudar');
 });
