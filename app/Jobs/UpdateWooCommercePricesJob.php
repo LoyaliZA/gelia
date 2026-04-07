@@ -12,6 +12,10 @@ use App\Models\WoocommerceProduct;
 use App\Models\WoocommerceMargin;
 use App\Models\WoocommerceConfig;
 use App\Models\WoocommerceSyncLog;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\WooSyncExitoMail;
+use App\Mail\WooSyncFalloMail;
+use Rap2hpoutre\FastExcel\FastExcel;
 
 class UpdateWooCommercePricesJob implements ShouldQueue
 {
@@ -44,12 +48,18 @@ class UpdateWooCommercePricesJob implements ShouldQueue
             ->pluck('sku')
             ->toArray();
 
-        $index = count($skusProcesados); 
+        $index = count($skusProcesados);
 
         // OPTIMIZACIÓN DE ARQUITECTURA: Usamos chunk() para traer nuestros 1764 productos 
         // de 100 en 100. Esto no satura la memoria RAM del servidor.
         WoocommerceProduct::chunk(100, function ($productosLocales) use (
-            $log, &$index, $margenes, $iva, $ck, $cs, $skusProcesados
+            $log,
+            &$index,
+            $margenes,
+            $iva,
+            $ck,
+            $cs,
+            $skusProcesados
         ) {
             // SEGURO ANTI-ZOMBIS (Kill Switch): Verificamos en BD si el usuario canceló el proceso
             if ($log->fresh()->estado === 'cancelado') {
@@ -113,6 +123,8 @@ class UpdateWooCommercePricesJob implements ShouldQueue
         if ($log->fresh()->estado !== 'cancelado') {
             $log->update(['estado' => 'completado']);
         }
+
+        $this->enviarNotificaciones($log->fresh());
     }
 
     private function registrarDetalleAuditoria($logId, $sku, $prod, $normal, $rebaja, $estado, $mensaje)
@@ -136,14 +148,53 @@ class UpdateWooCommercePricesJob implements ShouldQueue
     private function calcularPrecioFinal($base, $tipo, $margenes, $iva)
     {
         $multiplicador = 1.0;
-        
+
         foreach ($margenes as $m) {
             if ($base >= $m->precio_min && $base <= $m->precio_max) {
                 $multiplicador = ($tipo === 'rebaja') ? $m->multiplicador_rebaja : $m->multiplicador_normal;
                 break; // Optimización: Terminamos el ciclo al encontrar el rango
             }
         }
-        
+
         return round(($base * $multiplicador) / $iva, 2);
+    }
+
+    private function enviarNotificaciones($log)
+    {
+        $adminEmail = WoocommerceConfig::where('llave', 'admin_email')->value('valor') ?? 'tu_correo_admin@dominio.com';
+        
+        if ($log->estado === 'completado') {
+            // ÉXITO
+            $notifyStr = WoocommerceConfig::where('llave', 'notify_emails')->value('valor');
+            $destinatarios = $notifyStr ? array_filter(array_map('trim', explode(',', $notifyStr))) : [];
+            $destinatarios[] = $adminEmail; 
+            $destinatarios = array_unique($destinatarios);
+
+            // Generar el archivo CSV temporal
+            $detalles = \App\Models\WoocommerceSyncDetail::where('sync_log_id', $log->id)->get();
+            $tempPath = tempnam(sys_get_temp_dir(), 'woo_auditoria_');
+            
+            (new FastExcel($detalles))->export($tempPath, function ($detalle) {
+                return [
+                    'SKU' => $detalle->sku,
+                    'Normal Anterior' => $detalle->precio_anterior_normal ? '$' . $detalle->precio_anterior_normal : '---',
+                    'Normal Nuevo' => '$' . $detalle->precio_nuevo_normal,
+                    'Rebaja Anterior' => $detalle->precio_anterior_rebajado ? '$' . $detalle->precio_anterior_rebajado : '---',
+                    'Rebaja Nueva' => '$' . $detalle->precio_nuevo_rebajado,
+                    'Estado' => strtoupper($detalle->estado),
+                    'Mensaje' => $detalle->mensaje,
+                ];
+            });
+
+            // Usar la nueva clase Mailable
+            Mail::to($destinatarios)->send(new WooSyncExitoMail($log, $tempPath));
+
+            // Eliminar archivo temporal
+            unlink($tempPath); 
+
+        } else {
+            // FALLO (Solo enviamos al admin usando la clase Mailable)
+            Mail::to($adminEmail)->send(new WooSyncFalloMail($log));
+        }
     }
 }

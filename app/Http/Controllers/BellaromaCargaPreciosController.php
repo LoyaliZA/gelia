@@ -38,6 +38,9 @@ class BellaromaCargaPreciosController extends Controller
         $configIva = WoocommerceConfig::where('llave', 'iva')->first();
         $iva = $configIva ? (float) $configIva->valor : 1.16;
         $margenes = WoocommerceMargin::orderBy('precio_min')->get();
+        // En la función index(), agrega estas dos líneas donde consultas el IVA:
+        $adminEmail = WoocommerceConfig::where('llave', 'admin_email')->first()->valor ?? '';
+        $notifyEmails = WoocommerceConfig::where('llave', 'notify_emails')->first()->valor ?? '';
 
         // Detección de proceso en background para persistencia de UI
         // Detección de proceso en background con SEGURO ANTI-ZOMBIES (10 minutos de inactividad máxima)
@@ -52,7 +55,7 @@ class BellaromaCargaPreciosController extends Controller
                 ->orWhere('nombre', 'LIKE', "%{$query}%");
         })->orderBy($sort, $order)->paginate(15)->withQueryString();
 
-        return view('woocommerce', compact('templatesHoy', 'templatesHistorial', 'iva', 'margenes', 'productos', 'procesoActivo', 'sort', 'order'));
+        return view('woocommerce', compact('templatesHoy', 'templatesHistorial', 'iva', 'margenes', 'productos', 'procesoActivo', 'sort', 'order', 'adminEmail', 'notifyEmails'));
     }
 
     /**
@@ -77,10 +80,14 @@ class BellaromaCargaPreciosController extends Controller
     {
         $request->validate([
             'iva' => 'required|numeric|min:1',
-            'margenes' => 'required|array'
+            'margenes' => 'required|array',
+            'admin_email' => 'required|email',
+            'notify_emails' => 'nullable|string'
         ]);
 
         WoocommerceConfig::updateOrCreate(['llave' => 'iva'], ['valor' => (string) $request->iva]);
+        WoocommerceConfig::updateOrCreate(['llave' => 'admin_email'], ['valor' => trim($request->admin_email)]);
+        WoocommerceConfig::updateOrCreate(['llave' => 'notify_emails'], ['valor' => trim($request->notify_emails)]);
 
         foreach ($request->margenes as $id => $datos) {
             WoocommerceMargin::where('id', $id)->update([
@@ -89,7 +96,7 @@ class BellaromaCargaPreciosController extends Controller
             ]);
         }
 
-        return response()->json(['message' => 'Algoritmo actualizado correctamente.']);
+        return response()->json(['message' => 'Ajustes actualizados correctamente.']);
     }
 
     public function sincronizarProductos(Request $request)

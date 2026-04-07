@@ -17,7 +17,9 @@
                 <span class="bg-purple-500 w-2 h-6 rounded"></span> Algoritmo de Precios
             </h3>
             <button onclick="cerrarModalConfig()" class="text-gray-400 hover:text-white transition">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
             </button>
         </div>
 
@@ -62,6 +64,30 @@
                         </tbody>
                     </table>
                 </div>
+                <h4 class="text-white font-bold mt-8 mb-4 font-mono uppercase text-xs tracking-widest text-purple-400">Notificaciones de Sincronización</h4>
+                <div class="p-4 bg-dark-900 border border-dark-700 rounded-xl space-y-4">
+                    <div>
+                        <label class="block text-white font-bold mb-1">Correo del Administrador (Admin)</label>
+                        <p class="text-xs text-dark-muted mb-2">Recibe alertas de fallos y confirmaciones de éxito con el reporte.</p>
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <input type="email" name="admin_email" value="{{ $adminEmail ?? '' }}" placeholder="admin@tudominio.com" class="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors">
+                        </div>
+                    </div>
+
+                    <div class="border-t border-dark-700 pt-4">
+                        <label class="block text-white font-bold mb-1">Correos Adicionales (Equipo)</label>
+                        <p class="text-xs text-dark-muted mb-2">Reciben el CSV adjunto <span class="text-green-400 font-bold">solo cuando la carga es EXITOSA</span>. (Sepáralos con comas).</p>
+                        <div class="flex items-start gap-2">
+                            <svg class="w-5 h-5 text-gray-400 mt-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                            <textarea name="notify_emails" rows="2" placeholder="ventas@ejemplo.com, bodega@ejemplo.com" class="w-full bg-dark-800 border border-dark-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-purple-500 transition-colors custom-scroll">{{ $notifyEmails ?? '' }}</textarea>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
 
@@ -82,11 +108,11 @@
         </div>
         <h3 class="text-2xl font-bold text-white mb-2">Sincronizando Tienda</h3>
         <p class="text-dark-muted mb-8" id="status-texto">Actualizando precios en tiempo real...</p>
-        
+
         <div class="w-full bg-dark-900 rounded-full h-4 mb-4 overflow-hidden border border-dark-700">
             <div id="barra-progreso" class="bg-gradient-to-r from-purple-600 to-indigo-600 h-full transition-all duration-500" style="width: 0%"></div>
         </div>
-        
+
         <div class="flex justify-between text-xs font-bold text-dark-muted uppercase tracking-widest">
             <span id="conteo-productos">0 / 0</span>
             <span id="porcentaje-texto">0%</span>
@@ -99,7 +125,7 @@
 <div id="modal-edicion" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center">
     <div class="bg-dark-800 border border-dark-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl relative">
         <h3 class="text-lg font-bold text-white mb-4">Editar SKU: <span id="edit-sku" class="text-blue-400"></span></h3>
-        
+
         <form id="form-edicion" class="space-y-4">
             <input type="hidden" id="edit-id">
             <div>
