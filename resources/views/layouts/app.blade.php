@@ -47,6 +47,7 @@
                             class="text-dark-muted hover:text-bella-main px-3 py-2 rounded-md text-sm font-medium transition-colors">Bellaroma</a>
                         <a href="{{ route('woocommerce.index') }}"
                             class="text-dark-muted hover:text-woocommerce-main px-3 py-2 rounded-md text-sm font-medium transition-colors">WooCommerce</a>
+                        
                     </div>
                 </div>
 
@@ -74,6 +75,9 @@
                     class="text-dark-muted hover:text-bella-main block px-3 py-2 rounded-md text-base font-medium">Bellaroma</a>
                 <a href="{{ route('woocommerce.index') }}"
                     class="text-dark-muted hover:text-woocommerce-main block px-3 py-2 rounded-md text-base font-medium">WooCommerce</a>
+                
+    
+                    
             </div>
         </div>
     </nav>
@@ -101,15 +105,15 @@
         window.mostrarToast = function(mensaje, color = 'green') {
             const toast = document.getElementById('toast');
             const toastMsg = document.getElementById('toast-msg');
-            
+
             if (!toast || !toastMsg) return;
 
             // Reconstruimos las clases para aplicar el color dinámico (green o red)
             toast.className = `fixed top-5 right-5 z-50 px-6 py-4 rounded-lg shadow-xl text-white font-bold transition-all bg-${color}-600`;
             toastMsg.innerText = mensaje;
-            
+
             toast.classList.remove('hidden');
-            
+
             // Ocultar automáticamente después de 3.5 segundos
             setTimeout(() => {
                 toast.classList.add('hidden');

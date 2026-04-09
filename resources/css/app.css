@@ -61,4 +61,9 @@ details>summary::-webkit-details-marker {
     --color-woocommerce-dark: #0f172a;
     --color-woocommerce-main: #3b82f6;
     --color-woocommerce-light: #93c5fd;
+
+    /* Departamento: Plataformas (Tonos Naranja/Amarillo) */
+    --color-plataformas-dark: #78350f;
+    --color-plataformas-main: #f59e0b;
+    --color-plataformas-light: #fbbf24;
 }

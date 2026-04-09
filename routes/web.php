@@ -9,6 +9,8 @@ use App\Http\Controllers\AromasGastoController;
 use App\Http\Controllers\AromasTransaccionController;
 use App\Http\Controllers\AromasAvisosController; // <-- NUEVO MÓDULO DE AVISOS DE MERCANCÍA
 use App\Http\Controllers\AuthController; // <-- CONTROLADOR DE AUTENTICACIÓN
+use App\Http\Controllers\AromasAsistenciaController; // <-- NUEVO MÓDULO DE ASISTENCIA TÉCNICA
+use App\Http\Controllers\PlatformController; // <-- NUEVO CONTROLADOR PARA GESTIÓN DE PLATAFORMAS
 
 // =========================================================
 // RUTA PRINCIPAL (Home - Selección de Departamento)
@@ -56,6 +58,12 @@ Route::prefix('aromas')->group(function () {
     // ---------------------------------------------------------
     Route::get('/avisos', [AromasAvisosController::class, 'index'])->name('aromas.avisos.index');
     Route::post('/avisos/procesar', [AromasAvisosController::class, 'procesar'])->name('aromas.avisos.procesar');
+
+    // ---------------------------------------------------------
+    // 6. MÓDULO DE ASISTENCIA (Máquina Checadora)
+    // ---------------------------------------------------------
+    Route::get('/asistencia', [AromasAsistenciaController::class, 'index'])->name('aromas.asistencia.index');
+    Route::post('/asistencia/procesar', [AromasAsistenciaController::class, 'procesar'])->name('aromas.asistencia.procesar');
 });
 
 // =========================================================
@@ -126,3 +134,5 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
     Route::post('/sync/{id}/reanudar', [BellaromaCargaPreciosController::class, 'reanudarSync'])
     ->name('woocommerce.sync.reanudar');
 });
+
+
