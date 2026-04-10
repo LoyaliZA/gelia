@@ -11,7 +11,7 @@ use App\Http\Controllers\AromasAvisosController; // <-- NUEVO MÓDULO DE AVISOS 
 use App\Http\Controllers\AuthController; // <-- CONTROLADOR DE AUTENTICACIÓN
 use App\Http\Controllers\AromasAsistenciaController; // <-- NUEVO MÓDULO DE ASISTENCIA TÉCNICA
 use \App\Http\Controllers\ContabilidadController; // <-- NUEVO CONTROLADOR PARA CONTABILIDAD BELLAROMA  
-use App\Http\Controllers\PlatformController; // <-- NUEVO CONTROLADOR PARA GESTIÓN DE PLATAFORMAS
+
 
 // =========================================================
 // RUTA PRINCIPAL (Home - Selección de Departamento)
@@ -115,6 +115,8 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
     Route::get('/api/progreso/{id}', [BellaromaCargaPreciosController::class, 'consultarProgreso'])->name('woocommerce.api.progreso');
     Route::post('/api/carga-masiva', [BellaromaCargaPreciosController::class, 'iniciarCargaMasiva'])->name('woocommerce.api.carga-masiva');
     Route::put('/api/producto/{id}', [BellaromaCargaPreciosController::class, 'actualizarPrecioIndividual'])->name('woocommerce.api.actualizar-individual');
+    // Rutas de API para WooCommerce en web.php
+    Route::post('/api/previsualizar', [BellaromaCargaPreciosController::class, 'previsualizarCarga'])->name('woocommerce.api.previsualizar');
     // Vista del Centro de Auditoría
     Route::get('/auditoria', [BellaromaCargaPreciosController::class, 'auditoriaIndex'])->name('woocommerce.auditoria');
 
@@ -130,10 +132,10 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
         ->name('woocommerce.emergencia');
 
     Route::post('/sync/{id}/cancelar', [BellaromaCargaPreciosController::class, 'forzarCancelacionSync'])
-    ->name('woocommerce.sync.cancelar');
+        ->name('woocommerce.sync.cancelar');
 
     Route::post('/sync/{id}/reanudar', [BellaromaCargaPreciosController::class, 'reanudarSync'])
-    ->name('woocommerce.sync.reanudar');
+        ->name('woocommerce.sync.reanudar');
 });
 
 // =========================================================
@@ -150,7 +152,4 @@ Route::prefix('contabilidad')->middleware('auth')->group(function () {
     Route::get('/exportar-reporte', [ContabilidadController::class, 'exportarReporte'])->name('contabilidad.exportar-reporte');
     // Dashboard Avanzado API
     Route::get('/dashboard-data', [\App\Http\Controllers\ContabilidadController::class, 'getDashboardData'])->name('contabilidad.dashboard-data');
-
 });
-
-

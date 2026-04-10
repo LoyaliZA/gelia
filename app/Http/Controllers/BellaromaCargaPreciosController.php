@@ -7,16 +7,14 @@ use Rap2hpoutre\FastExcel\FastExcel;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
-// Importación de Modelos
+use Illuminate\Support\Facades\Artisan;
 use App\Models\WoocommerceTemplate;
 use App\Models\WoocommerceProduct;
 use App\Models\WoocommerceMargin;
 use App\Models\WoocommerceConfig;
 use App\Models\WoocommerceSyncLog;
-// Importación del Job
 use App\Jobs\UpdateWooCommercePricesJob;
 use App\Jobs\FetchWooCommercePricesJob;
-use Illuminate\Support\Facades\Artisan;
 
 class BellaromaCargaPreciosController extends Controller
 {
@@ -163,6 +161,28 @@ class BellaromaCargaPreciosController extends Controller
     }
 
     /**
+     * FASE 1: Previsualización (Dry-Run).
+     * Analiza el Excel y devuelve los cambios pendientes sin tocar la API externa.
+     */
+    public function previsualizarCarga(Request $request)
+    {
+        $request->validate(['listado_aromas' => 'required|file']);
+
+        $configIva = WoocommerceConfig::where('llave', 'iva')->first();
+        $iva = $configIva ? (float) $configIva->valor : 1.16;
+        $margenes = WoocommerceMargin::orderBy('precio_min')->get();
+
+        $preciosWizerp = $this->extraerPreciosDesdeExcel($request->file('listado_aromas')->getRealPath());
+        $cambiosPendientes = $this->generarAnalisisDeCambios($preciosWizerp, $iva, $margenes);
+
+        return response()->json([
+            'success' => true,
+            'total_cambios' => count($cambiosPendientes),
+            'detalles' => $cambiosPendientes
+        ]);
+    }
+
+    /**
      * Generación: Crea el archivo CSV de resurtido para descarga manual.
      */
     public function procesar(Request $request)
@@ -212,22 +232,16 @@ class BellaromaCargaPreciosController extends Controller
     }
 
     /**
-     * API: Inicia la actualización masiva en segundo plano (Job).
+     * FASE 2: Ejecución de la Carga Masiva.
+     * Despacha el Job con los datos ya validados.
      */
     public function iniciarCargaMasiva(Request $request)
     {
         $request->validate(['listado_aromas' => 'required|file']);
 
-        $preciosWizerp = [];
-        (new FastExcel)->withoutHeaders()->import($request->file('listado_aromas')->getRealPath(), function ($linea) use (&$preciosWizerp) {
-            $sku = trim((string)($linea[1] ?? ''));
-            $precio = (float)($linea[5] ?? 0);
-            if ($sku !== '' && $precio > 0) $preciosWizerp[$sku] = $precio;
-        });
-
+        $preciosWizerp = $this->extraerPreciosDesdeExcel($request->file('listado_aromas')->getRealPath());
         $total = WoocommerceProduct::count();
 
-        // Usamos el Modelo en lugar de \DB para evitar errores de Intelephense
         $log = WoocommerceSyncLog::create([
             'total_productos' => $total,
             'procesados' => 0,
@@ -258,6 +272,45 @@ class BellaromaCargaPreciosController extends Controller
         return response()->json(['success' => true]);
     }
 
+    private function extraerPreciosDesdeExcel(string $rutaArchivo): array
+    {
+        $precios = [];
+        (new FastExcel)->withoutHeaders()->import($rutaArchivo, function ($linea) use (&$precios) {
+            $sku = trim((string)($linea[1] ?? ''));
+            $precio = (float)($linea[5] ?? 0);
+            if ($sku !== '' && $precio > 0) {
+                $precios[$sku] = $precio;
+            }
+        });
+        return $precios;
+    }
+
+    private function generarAnalisisDeCambios(array $preciosWizerp, float $iva, $margenes): array
+    {
+        $cambios = [];
+        $productosLocales = WoocommerceProduct::all();
+
+        foreach ($productosLocales as $prod) {
+            if (!isset($preciosWizerp[$prod->sku])) continue;
+
+            $base = $preciosWizerp[$prod->sku];
+            $normal = $this->calcular($base, 'normal', $margenes, $iva);
+            $rebaja = $this->calcular($base, 'rebaja', $margenes, $iva);
+
+            if ($prod->precio_normal != $normal || $prod->precio_rebajado != $rebaja) {
+                $cambios[] = [
+                    'sku' => $prod->sku,
+                    'nombre' => $prod->nombre,
+                    'precio_normal_anterior' => $prod->precio_normal,
+                    'precio_normal_nuevo' => $normal,
+                    'precio_rebaja_anterior' => $prod->precio_rebajado,
+                    'precio_rebaja_nuevo' => $rebaja
+                ];
+            }
+        }
+        return $cambios;
+    }
+
     private function calcular($base, $tipo, $margenes, $iva)
     {
         $mult = 1.0;
@@ -275,21 +328,16 @@ class BellaromaCargaPreciosController extends Controller
         $total = WoocommerceProduct::count();
 
         if ($total === 0) {
-            return response()->json([
-                'success' => false,
-                'message' => 'El catálogo local está vacío. Sube el CSV primero.'
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'El catálogo local está vacío. Sube el CSV primero.'], 400);
         }
 
-        // Creamos el log para que la barra de progreso sepa cuánto falta
         $log = WoocommerceSyncLog::create([
             'total_productos' => $total,
             'procesados' => 0,
             'estado' => 'pendiente'
         ]);
 
-        // Disparamos el Job que creaste en el paso anterior
-        \App\Jobs\FetchWooCommercePricesJob::dispatch($log->id);
+        FetchWooCommercePricesJob::dispatch($log->id);
 
         return response()->json(['success' => true, 'log_id' => $log->id]);
     }

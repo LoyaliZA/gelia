@@ -57,11 +57,12 @@
                     </svg>
                     Generar CSV
                 </button>
-                <button onclick="ejecutarProceso('nube')" class="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition-all">
+                <button onclick="ejecutarProceso('previsualizar')" class="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg hover:scale-[1.02] transition-all">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                    Subir a Web
+                    Analizar Cambios
                 </button>
             </div>
         </div>
@@ -266,6 +267,53 @@
 
     <div class="p-4 bg-dark-900/30 border-t border-dark-700">
         {{ $productos->links() }}
+    </div>
+</div>
+
+<div id="modal-previsualizacion" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col m-4">
+        
+        <div class="p-6 border-b border-dark-700 flex justify-between items-center bg-dark-900/50 rounded-t-2xl">
+            <div>
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Confirmación de Carga
+                </h2>
+                <p class="text-sm text-dark-muted mt-1" id="texto-resumen-cambios">Se detectaron N productos con cambios en su precio.</p>
+            </div>
+            <button onclick="cerrarModalPrevisualizacion()" class="text-gray-500 hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+        </div>
+
+        <div class="p-0 overflow-y-auto flex-1">
+            <table class="w-full text-sm text-left">
+                <thead class="text-xs text-gray-400 bg-dark-900 sticky top-0 uppercase font-bold shadow-md">
+                    <tr>
+                        <th class="px-6 py-4">SKU</th>
+                        <th class="px-6 py-4">Producto</th>
+                        <th class="px-6 py-4 text-center">Precio Normal</th>
+                        <th class="px-6 py-4 text-center">Precio Oferta</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-previsualizacion" class="divide-y divide-dark-700 bg-dark-800">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="p-6 border-t border-dark-700 bg-dark-900/50 rounded-b-2xl flex justify-end gap-3">
+            <button onclick="cerrarModalPrevisualizacion()" class="px-6 py-2.5 bg-dark-700 text-gray-300 font-bold rounded-xl hover:bg-dark-600 transition-all">
+                Cancelar
+            </button>
+            <button onclick="ejecutarProceso('nube')" class="px-6 py-2.5 bg-purple-600 text-white font-bold rounded-xl hover:bg-purple-500 flex items-center gap-2 transition-all shadow-lg shadow-purple-500/20">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Confirmar y Sincronizar API
+            </button>
+        </div>
     </div>
 </div>
 

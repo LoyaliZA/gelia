@@ -28,9 +28,43 @@ window.cambiarPestanaWoo = function(pestana) {
     });
 };
 
-// 2. Procesamiento de Inventario (Excel -> CSV o API)
+// Funciones para el Modal de Previsualización
+window.cerrarModalPrevisualizacion = () => document.getElementById('modal-previsualizacion').classList.add('hidden');
+
+function renderizarTablaPrevisualizacion(detalles) {
+    const tbody = document.getElementById('tabla-previsualizacion');
+    tbody.innerHTML = '';
+
+    if (detalles.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="p-8 text-center text-dark-muted font-bold">No se detectaron diferencias con los precios actuales.</td></tr>`;
+        return;
+    }
+
+    detalles.forEach(item => {
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-dark-700/30 transition-colors';
+        
+        row.innerHTML = `
+            <td class="px-6 py-4 font-bold text-gray-300">${item.sku}</td>
+            <td class="px-6 py-4 text-white font-medium truncate max-w-xs">${item.nombre}</td>
+            <td class="px-6 py-4 text-center">
+                <span class="line-through text-dark-muted text-xs mr-2">$${Number(item.precio_normal_anterior).toFixed(2)}</span>
+                <span class="text-white font-bold">$${Number(item.precio_normal_nuevo).toFixed(2)}</span>
+            </td>
+            <td class="px-6 py-4 text-center">
+                <span class="line-through text-dark-muted text-xs mr-2">$${Number(item.precio_rebaja_anterior).toFixed(2)}</span>
+                <span class="text-green-400 font-bold">$${Number(item.precio_rebaja_nuevo).toFixed(2)}</span>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+
+    document.getElementById('texto-resumen-cambios').innerText = `Se detectaron ${detalles.length} productos que requieren actualización en WooCommerce.`;
+    document.getElementById('modal-previsualizacion').classList.remove('hidden');
+}
+
+// 2. Procesamiento de Inventario Modificado
 window.ejecutarProceso = async (modo) => {
-    // Buscamos el input por el ID directo o por el ID con prefijo que suele generar Blade
     const inputExcel = document.getElementById('listado-aromas') || document.getElementById('file-listado-aromas');
     const tokenInput = document.querySelector('input[name="_token"]');
     
@@ -38,36 +72,41 @@ window.ejecutarProceso = async (modo) => {
         return window.mostrarToast('Selecciona el Excel de Wizerp primero.', 'red');
     }
 
-    if (!tokenInput) {
-        return window.mostrarToast('Error de seguridad: Token CSRF no encontrado.', 'red');
-    }
-
     const formData = new FormData();
     formData.append('listado_aromas', inputExcel.files[0]);
     formData.append('_token', tokenInput.value);
 
-    window.mostrarCarga(modo === 'local' ? 'Generando archivo de resurtido...' : 'Conectando con WooCommerce...');
-
     try {
-        const endpoint = modo === 'local' ? '/woocommerce/procesar' : '/woocommerce/api/carga-masiva';
-        const response = await fetch(endpoint, { 
-            method: 'POST', 
-            body: formData,
-            headers: { 'Accept': 'application/json' }
-        });
-        
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message || 'Error del servidor.');
-
         if (modo === 'local') {
+            window.mostrarCarga('Generando archivo de resurtido...');
+            const response = await fetch('/woocommerce/procesar', { method: 'POST', body: formData, headers: { 'Accept': 'application/json' }});
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.message || 'Error del servidor.');
+            
             window.mostrarToast('Archivo generado exitosamente.', 'green');
-            const link = document.createElement('a');
-            link.href = data.download_url;
-            link.click();
+            const link = document.createElement('a'); link.href = data.download_url; link.click();
             setTimeout(() => window.location.reload(), 1500);
-        } else {
-            document.getElementById('status-api-container').classList.remove('hidden');
+
+        } else if (modo === 'previsualizar') {
+            window.mostrarCarga('Analizando diferencias de precios...');
+            const response = await fetch('/woocommerce/api/previsualizar', { method: 'POST', body: formData, headers: { 'Accept': 'application/json' }});
+            const data = await response.json();
             window.ocultarCarga();
+            
+            if (!response.ok) throw new Error(data.message || 'Error al analizar el documento.');
+            renderizarTablaPrevisualizacion(data.detalles);
+
+        } else if (modo === 'nube') {
+            cerrarModalPrevisualizacion();
+            window.mostrarCarga('Iniciando carga estructurada por lotes...');
+            
+            const response = await fetch('/woocommerce/api/carga-masiva', { method: 'POST', body: formData, headers: { 'Accept': 'application/json' }});
+            const data = await response.json();
+            window.ocultarCarga();
+            
+            if (!response.ok) throw new Error(data.message || 'Error de conexión.');
+
+            document.getElementById('status-api-container').classList.remove('hidden');
             trackearProgreso(data.log_id);
         }
     } catch (e) {

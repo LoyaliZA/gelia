@@ -82,20 +82,24 @@ document.addEventListener('DOMContentLoaded', function () {
     const nombreArchivoGuardado = sessionStorage.getItem('gelia_lista_nombre');
     
     if (memoriaGuardada) {
-        diccionarioSKU = JSON.parse(memoriaGuardada);
-        const nombreMostrar = nombreArchivoGuardado ? nombreArchivoGuardado : 'Lista en memoria';
-        
-        // PARCHE A PRUEBA DE BALAS: Verificamos que indicadorNombre exista antes de intentar pintarlo
-        if (indicadorNombre) {
-            indicadorNombre.innerText = `[${nombreMostrar}] - ${Object.keys(diccionarioSKU).length} productos.`;
-            indicadorNombre.classList.replace('text-dark-muted', 'text-green-400');
+        try {
+            diccionarioSKU = JSON.parse(memoriaGuardada);
+            const nombreMostrar = nombreArchivoGuardado ? nombreArchivoGuardado : 'Lista en memoria';
+            
+            // Validamos existencia antes de asignar texto
+            if (indicadorNombre) {
+                indicadorNombre.innerText = `[${nombreMostrar}] - ${Object.keys(diccionarioSKU).length} productos.`;
+                indicadorNombre.classList.replace('text-dark-muted', 'text-green-400');
+            }
+            
+            const bloqueoForm = document.getElementById('bloqueo_formulario');
+            if (bloqueoForm) bloqueoForm.style.display = 'none';
+            
+            if (btnLimpiarMemoria) btnLimpiarMemoria.classList.remove('hidden');
+            if (contenedorProductos && contenedorProductos.children.length === 0) agregarFilaProducto();
+        } catch (e) {
+            console.error("Error al recuperar memoria:", e);
         }
-        
-        const bloqueoFormulario = document.getElementById('bloqueo_formulario');
-        if (bloqueoFormulario) bloqueoFormulario.style.display = 'none';
-        
-        if (btnLimpiarMemoria) btnLimpiarMemoria.classList.remove('hidden');
-        if (contenedorProductos && contenedorProductos.children.length === 0) agregarFilaProducto();
     }
 
     // 6. PROCESAMIENTO DE NUEVO EXCEL (LISTA DEL DÍA)

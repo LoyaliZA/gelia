@@ -228,20 +228,19 @@ class ContabilidadController extends Controller
         ]);
     }
 
-    /**
+   /**
      * Procesa el archivo histórico, agrupa los pedidos descombinados y calcula utilidades.
      */
     public function importarHistorico(Request $request)
     {
         $request->validate(['archivo_historico' => 'required|file|mimes:xlsx,csv']);
-
+        
         $archivo = $request->file('archivo_historico');
         $nombreTemp = 'temp_hist_' . uniqid() . '.' . $archivo->getClientOriginalExtension();
         $rutaCompleta = sys_get_temp_dir() . '/' . $nombreTemp;
         $archivo->move(sys_get_temp_dir(), $nombreTemp);
 
-        // Diccionario de plataformas para búsqueda rápida sin importar mayúsculas/espacios
-        $platformsDB = Platform::all()->keyBy(function ($item) {
+        $platformsDB = Platform::all()->keyBy(function($item) {
             return strtolower(str_replace(' ', '', $item->name));
         });
 
@@ -252,25 +251,32 @@ class ContabilidadController extends Controller
                 $numPedido = trim((string)($linea['Pedido'] ?? ''));
                 if ($numPedido === '' || $numPedido === 'Ej: 28098') return;
 
-                // Si es la primera vez que vemos este número de pedido, guardamos sus datos globales
                 if (!isset($pedidosAgrupados[$numPedido])) {
+                    
+                    // --- LÓGICA DE FECHA ROBUSTA ---
+                    $fechaRaw = trim((string)($linea['Fecha'] ?? ''));
+                    $fechaFinal = date('Y-m-d'); // Fallback hoy
 
-                    // Parseo de fecha flexible (Carbon o String)
-                    $fecha = isset($linea['Fecha']) && $linea['Fecha'] instanceof \DateTime
-                        ? $linea['Fecha']->format('Y-m-d')
-                        : date('Y-m-d', strtotime(str_replace('/', '-', $linea['Fecha'])));
+                    try {
+                        if ($linea['Fecha'] instanceof \DateTime) {
+                            $fechaFinal = $linea['Fecha']->format('Y-m-d');
+                        } else {
+                            // Intentamos parsear el formato DD/MM/YY que mencionas
+                            $fechaFinal = \Carbon\Carbon::parse(str_replace('/', '-', $fechaRaw))->format('Y-m-d');
+                        }
+                    } catch (\Exception $e) {
+                        Log::warning("GELIA: No se pudo parsear fecha $fechaRaw, usando fecha actual.");
+                    }
 
-                    // Reemplaza la función $limpiarNumero por esta en las dos partes que aparece:
-                    $limpiarNumero = function ($valor) {
+                    // --- FUNCIÓN DE LIMPIEZA DE MONEDA (Signos, comas, espacios) ---
+                    $limpiarNumero = function($valor) {
                         if (!$valor) return 0.0;
-                        // Esto quita $, espacios, letras y comas, dejando solo el número y el punto decimal
                         $soloNumero = preg_replace('/[^0-9.]/', '', (string)$valor);
                         return (float) $soloNumero;
                     };
 
                     $pedidosAgrupados[$numPedido] = [
-                        'fecha' => $fecha,
-                        // 2. EXTRAEMOS EL TIPO DE TRANSACCIÓN DESDE EL EXCEL AQUÍ
+                        'fecha' => $fechaFinal,
                         'tipo_transaccion' => strtolower(trim((string)($linea['Tipo_Transaccion'] ?? 'venta'))),
                         'plataforma' => trim((string)$linea['Plataforma'] ?? ''),
                         'venta_total' => $limpiarNumero($linea['Venta_Total'] ?? 0),
@@ -281,15 +287,11 @@ class ContabilidadController extends Controller
                     ];
                 }
 
-                // Reemplaza la función $limpiarNumero por esta en las dos partes que aparece:
-                $limpiarNumero = function ($valor) {
-                    if (!$valor) return 0.0;
-                    // Esto quita $, espacios, letras y comas, dejando solo el número y el punto decimal
+                $limpiarNumero = function($valor) {
                     $soloNumero = preg_replace('/[^0-9.]/', '', (string)$valor);
                     return (float) $soloNumero;
                 };
 
-                // Insertamos el SKU a la matriz de productos de ese pedido
                 $pedidosAgrupados[$numPedido]['productos'][] = [
                     'sku' => trim((string)($linea['SKU'] ?? '')),
                     'piezas' => (int)($linea['Piezas'] ?? 1),
@@ -297,36 +299,33 @@ class ContabilidadController extends Controller
                 ];
             });
 
-            // Una vez agrupados, procesamos contra la Base de Datos
             DB::beginTransaction();
-
             $conteoRegistrados = 0;
 
             foreach ($pedidosAgrupados as $numPedido => $data) {
-                // Buscamos el ID de la plataforma
                 $platKey = strtolower(str_replace(' ', '', $data['plataforma']));
                 $platform_id = isset($platformsDB[$platKey]) ? $platformsDB[$platKey]->id : $platformsDB->first()->id;
 
                 $costoProductos = 0.0;
-                foreach ($data['productos'] as $prod) {
+                foreach($data['productos'] as $prod) {
                     $costoProductos += ($prod['precio_pagina'] * $prod['piezas']);
                 }
 
                 $gastoEnvioEmpresa = $data['envio_pagado_cliente'] ? 0.0 : $data['envio_cobrado'];
-
-                // 3. APLICAMOS LA REGLA MATEMÁTICA DE GANANCIA O PÉRDIDA AQUÍ
-                if ($data['tipo_transaccion'] === 'venta') {
+                
+                // CORRECCIÓN: Ahora verificamos si la cadena contiene la palabra 'venta' 
+                // para que 'Venta Normal' sea procesada correctamente como ganancia.
+                if (str_contains($data['tipo_transaccion'], 'venta')) {
                     $utilidadFinal = $data['venta_total'] - $costoProductos - $gastoEnvioEmpresa - $data['comision_cobrada'];
                 } else {
-                    // Es Reembolso o Contracargo: No hay ganancia de venta, todo es pérdida
-                    $utilidadFinal = - ($costoProductos + $gastoEnvioEmpresa + $data['comision_cobrada']);
+                    // Es Reembolso o Contracargo
+                    $utilidadFinal = -($costoProductos + $gastoEnvioEmpresa + $data['comision_cobrada']);
                 }
 
                 $pedido = ContabilidadPedido::updateOrCreate(
-                    ['numero_pedido' => $numPedido], // Evita duplicados
+                    ['numero_pedido' => $numPedido],
                     [
                         'fecha_salida' => $data['fecha'],
-                        // 4. GUARDAMOS EL TIPO DE TRANSACCIÓN EN LA BD AQUÍ
                         'tipo_transaccion' => $data['tipo_transaccion'],
                         'platform_id' => $platform_id,
                         'venta_total' => $data['venta_total'],
@@ -337,34 +336,32 @@ class ContabilidadController extends Controller
                     ]
                 );
 
-                // Limpiamos detalles viejos por si es una re-importación correctiva
                 $pedido->detalles()->delete();
 
-                foreach ($data['productos'] as $prod) {
+                foreach($data['productos'] as $prod) {
                     ContabilidadPedidoDetalle::create([
                         'contabilidad_pedido_id' => $pedido->id,
                         'sku' => $prod['sku'],
                         'piezas' => $prod['piezas'],
-                        'nombre_producto' => 'Carga Masiva (SKU: ' . $prod['sku'] . ')',
+                        'nombre_producto' => 'Carga Masiva (SKU: '.$prod['sku'].')',
                         'precio_unitario' => $prod['precio_pagina'],
                         'subtotal' => $prod['precio_pagina'] * $prod['piezas']
                     ]);
                 }
-
                 $conteoRegistrados++;
             }
 
             DB::commit();
             return response()->json(['success' => true, 'message' => "Se importaron $conteoRegistrados pedidos exitosamente."]);
+
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('GELIA (Conta Historico) - Error: ' . $e->getMessage() . ' Línea: ' . $e->getLine());
+            Log::error('GELIA (Conta Historico) - Error: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Fallo al procesar el archivo. Verifique el formato.'], 500);
         } finally {
             if (file_exists($rutaCompleta)) unlink($rutaCompleta);
         }
     }
-
     /**
      * API para alimentar el Dashboard Avanzado de forma dinámica.
      */
