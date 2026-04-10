@@ -7,8 +7,7 @@
     <title>@yield('title', 'Gelia Hub')</title>
 
     @vite(['resources/css/app.css'])
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=drive_export" />
-
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     @stack('scripts')
 </head>
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\AromasTransaccionController;
 use App\Http\Controllers\AromasAvisosController; // <-- NUEVO MÓDULO DE AVISOS DE MERCANCÍA
 use App\Http\Controllers\AuthController; // <-- CONTROLADOR DE AUTENTICACIÓN
 use App\Http\Controllers\AromasAsistenciaController; // <-- NUEVO MÓDULO DE ASISTENCIA TÉCNICA
+use \App\Http\Controllers\ContabilidadController; // <-- NUEVO CONTROLADOR PARA CONTABILIDAD BELLAROMA  
 use App\Http\Controllers\PlatformController; // <-- NUEVO CONTROLADOR PARA GESTIÓN DE PLATAFORMAS
 
 // =========================================================
@@ -109,16 +110,16 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
     // Ruta para la prueba de concepto de la API
     Route::get('/api/test-productos', [BellaromaCargaPreciosController::class, 'testApiGetProducts'])->name('woocommerce.api.test');
     Route::post('/api/actualizar-prueba', [BellaromaCargaPreciosController::class, 'actualizarPrecioPrueba'])->name('woocommerce.api.update');
-    Route::post('/api/descargar-precios', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'descargarPreciosApi'])->name('woocommerce.api.descargar');
+    Route::post('/api/descargar-precios', [BellaromaCargaPreciosController::class, 'descargarPreciosApi'])->name('woocommerce.api.descargar');
     // ¡NUEVA! Ruta para consultar el progreso (esta es la que causó el 404)
-    Route::get('/api/progreso/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'consultarProgreso'])->name('woocommerce.api.progreso');
+    Route::get('/api/progreso/{id}', [BellaromaCargaPreciosController::class, 'consultarProgreso'])->name('woocommerce.api.progreso');
     Route::post('/api/carga-masiva', [BellaromaCargaPreciosController::class, 'iniciarCargaMasiva'])->name('woocommerce.api.carga-masiva');
-    Route::put('/api/producto/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'actualizarPrecioIndividual'])->name('woocommerce.api.actualizar-individual');
+    Route::put('/api/producto/{id}', [BellaromaCargaPreciosController::class, 'actualizarPrecioIndividual'])->name('woocommerce.api.actualizar-individual');
     // Vista del Centro de Auditoría
-    Route::get('/auditoria', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'auditoriaIndex'])->name('woocommerce.auditoria');
+    Route::get('/auditoria', [BellaromaCargaPreciosController::class, 'auditoriaIndex'])->name('woocommerce.auditoria');
 
     // Descarga del CSV (El que creamos en el paso anterior)
-    Route::get('/auditoria/descargar/{id}', [\App\Http\Controllers\BellaromaCargaPreciosController::class, 'descargarAuditoria'])->name('woocommerce.auditoria.descargar');
+    Route::get('/auditoria/descargar/{id}', [BellaromaCargaPreciosController::class, 'descargarAuditoria'])->name('woocommerce.auditoria.descargar');
 
     // PANEL DE ALERTAS WOOCOMMERCE
     Route::get('/alertas', [BellaromaCargaPreciosController::class, 'alertasInventario'])
@@ -133,6 +134,23 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
 
     Route::post('/sync/{id}/reanudar', [BellaromaCargaPreciosController::class, 'reanudarSync'])
     ->name('woocommerce.sync.reanudar');
+});
+
+// =========================================================
+// MÓDULO CONTABILIDAD BELLAROMA (Lic. Mayra)
+// =========================================================
+Route::prefix('contabilidad')->middleware('auth')->group(function () {
+    Route::get('/', [ContabilidadController::class, 'index'])->name('contabilidad.index');
+    Route::post('/procesar-lista', [ContabilidadController::class, 'procesarLista'])->name('contabilidad.procesar-lista');
+    Route::post('/guardar-pedido', [ContabilidadController::class, 'guardarPedido'])->name('contabilidad.guardar-pedido');
+    Route::delete('/eliminar-pedido/{id}', [ContabilidadController::class, 'eliminarPedido'])->name('contabilidad.eliminar-pedido');
+    //Carga masiva de pedidos desde Excel (similar a la función procesarLista pero con validaciones específicas para pedidos)
+    Route::get('/descargar-plantilla', [ContabilidadController::class, 'descargarPlantilla'])->name('contabilidad.descargar-plantilla');
+    Route::post('/importar-historico', [ContabilidadController::class, 'importarHistorico'])->name('contabilidad.importar-historico');
+    Route::get('/exportar-reporte', [ContabilidadController::class, 'exportarReporte'])->name('contabilidad.exportar-reporte');
+    // Dashboard Avanzado API
+    Route::get('/dashboard-data', [\App\Http\Controllers\ContabilidadController::class, 'getDashboardData'])->name('contabilidad.dashboard-data');
+
 });
 
 
