@@ -1,6 +1,6 @@
 /*
  * Módulo: Contabilidad Bellaroma
- * Descripción: Maneja la lógica de la interfaz, autocompletado en memoria, y gráficas.
+ * Descripción: Maneja la lógica de la interfaz, autocompletado en memoria y gráficas.
  */
 
 // 1. FUNCIONES GLOBALES (Borrado)
@@ -24,17 +24,127 @@ window.borrarPedido = async function(id) {
     }
 };
 
+window.verDetallesPedido = function(numPedido, detalles) {
+    document.getElementById('detalles_num_pedido').innerText = numPedido;
+    const tbody = document.getElementById('tabla_detalles_body');
+    tbody.innerHTML = '';
+
+    if (!detalles || detalles.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-dark-muted">No hay detalles registrados.</td></tr>';
+    } else {
+        detalles.forEach(prod => {
+            tbody.innerHTML += `
+                <tr class="hover:bg-dark-700/30">
+                    <td class="py-2 text-xs text-dark-muted">${prod.sku}</td>
+                    <td class="py-2 text-xs truncate max-w-[150px]" title="${prod.nombre_producto}">${prod.nombre_producto}</td>
+                    <td class="py-2 text-xs text-center">${prod.piezas}</td>
+                    <td class="py-2 text-xs text-right text-green-400">$${parseFloat(prod.precio_unitario).toFixed(2)}</td>
+                </tr>
+            `;
+        });
+    }
+    document.getElementById('modalDetalles').showModal();
+};
+
+window.abrirModalEdicion = function(id, numPedido, tipo, platformId, venta, envio, comision) {
+    document.getElementById('edit_id').value = id;
+    document.getElementById('edit_num_pedido').innerText = numPedido;
+    
+    // Normalizar el tipo de transacción para el select
+    let tipoNormalizado = 'venta';
+    if(tipo.includes('reembolso')) tipoNormalizado = 'reembolso';
+    if(tipo.includes('contracargo')) tipoNormalizado = 'contracargo';
+    
+    document.getElementById('edit_tipo').value = tipoNormalizado;
+    document.getElementById('edit_plataforma').value = platformId;
+    document.getElementById('edit_venta').value = parseFloat(venta).toFixed(2);
+    document.getElementById('edit_envio').value = parseFloat(envio).toFixed(2);
+    document.getElementById('edit_comision').value = parseFloat(comision).toFixed(2);
+    
+    document.getElementById('modalEditar').showModal();
+};
+
 document.addEventListener('DOMContentLoaded', function () {
 
-    // 2. VARIABLES GLOBALES DEL MÓDULO
+    const formEditar = document.getElementById('formEditarPedido');
+    if (formEditar) {
+        formEditar.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit_id').value;
+            const payload = {
+                tipo_transaccion: document.getElementById('edit_tipo').value,
+                platform_id: document.getElementById('edit_plataforma').value,
+                venta_total: document.getElementById('edit_venta').value,
+                costo_envio: document.getElementById('edit_envio').value,
+                comision_plataforma: document.getElementById('edit_comision').value
+            };
+
+            if(typeof window.mostrarCarga === 'function') window.mostrarCarga('Actualizando montos...');
+
+            try {
+                const response = await fetch(`${window.ContabilidadConfig.rutas.actualizarPedidoBase}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.ContabilidadConfig.token },
+                    body: JSON.stringify(payload)
+                });
+                const res = await response.json();
+                
+                if(res.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + res.message);
+                }
+            } catch(error) {
+                console.error(error);
+                alert('Fallo de conexión.');
+            } finally {
+                if(typeof window.ocultarCarga === 'function') window.ocultarCarga();
+            }
+        });
+    }
+
+    // Lógica para togglear el panel de carga masiva (Restaurado)
+    const btnToggleMasivo = document.getElementById('btnToggleMasivo');
+    const panelCargaMasiva = document.getElementById('panelCargaMasiva');
+    if (btnToggleMasivo && panelCargaMasiva) {
+        btnToggleMasivo.addEventListener('click', () => panelCargaMasiva.classList.toggle('hidden'));
+    }
+
+    const config = window.ContabilidadConfig || {};
     let diccionarioSKU = {};
     const contenedorProductos = document.getElementById('contenedor_productos');
-    const config = window.ContabilidadConfig || {};
-    const chartData = config.graficaData || {};
     const indicadorNombre = document.getElementById('nombre_archivo_resurtido');
     const btnLimpiarMemoria = document.getElementById('btnLimpiarMemoria');
+    // --- FUNCIÓN PARA BORRAR LA LISTA DE LA MEMORIA ---
+    if (btnLimpiarMemoria) {
+        btnLimpiarMemoria.addEventListener('click', function() {
+            if(!confirm('¿Estás seguro de cerrar la sesión de esta lista? Se bloqueará el formulario de nuevo.')) return;
 
-    // 3. SANITIZACIÓN DE MONEDA
+            // 1. Limpiar el almacenamiento del navegador y variables
+            sessionStorage.removeItem('gelia_lista_resurtido');
+            sessionStorage.removeItem('gelia_lista_nombre');
+            diccionarioSKU = {};
+
+            // 2. Restaurar la interfaz (Textos y Botones)
+            if (indicadorNombre) {
+                indicadorNombre.innerText = 'Sin archivo cargado.';
+                indicadorNombre.classList.replace('text-green-400', 'text-dark-muted');
+            }
+            this.classList.add('hidden');
+            
+            const inputArchivo = document.getElementById('archivo_resurtido');
+            if (inputArchivo) inputArchivo.value = '';
+
+            // 3. Volver a bloquear el formulario
+            const bloqueoForm = document.getElementById('bloqueo_formulario');
+            if (bloqueoForm) bloqueoForm.style.display = 'flex';
+
+            // 4. Limpiar los productos que estaban en el formulario
+            if (contenedorProductos) contenedorProductos.innerHTML = '';
+        });
+    }
+
+    // --- SANITIZACIÓN DE MONEDA ---
     function limpiarMoneda(valor) {
         if (!valor) return '';
         return valor.replace(/[^0-9.]/g, '');
@@ -47,37 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // 4. LÓGICA DE FECHA "PEGAJOSA"
-    const inputFecha = document.getElementById('fecha_salida');
-    const btnFechaHoy = document.getElementById('btnFechaHoy');
-    const fechaLocalActual = new Date().toLocaleDateString('en-CA'); 
-    
-    const fechaGuardada = sessionStorage.getItem('gelia_fecha_captura');
-    const diaRealGuardado = sessionStorage.getItem('gelia_dia_real');
-
-    if (inputFecha) {
-        if (fechaGuardada && diaRealGuardado === fechaLocalActual) {
-            inputFecha.value = fechaGuardada;
-        } else {
-            inputFecha.value = fechaLocalActual;
-            sessionStorage.removeItem('gelia_fecha_captura');
-        }
-
-        inputFecha.addEventListener('change', function() {
-            sessionStorage.setItem('gelia_fecha_captura', this.value);
-            sessionStorage.setItem('gelia_dia_real', fechaLocalActual);
-        });
-
-        if (btnFechaHoy) {
-            btnFechaHoy.addEventListener('click', function() {
-                inputFecha.value = fechaLocalActual;
-                sessionStorage.setItem('gelia_fecha_captura', fechaLocalActual);
-                sessionStorage.setItem('gelia_dia_real', fechaLocalActual);
-            });
-        }
-    }
-
-    // 5. RECUPERACIÓN DE MEMORIA DEL EXCEL
+    // --- RECUPERACIÓN DE MEMORIA DEL EXCEL ---
     const memoriaGuardada = sessionStorage.getItem('gelia_lista_resurtido');
     const nombreArchivoGuardado = sessionStorage.getItem('gelia_lista_nombre');
     
@@ -86,7 +166,6 @@ document.addEventListener('DOMContentLoaded', function () {
             diccionarioSKU = JSON.parse(memoriaGuardada);
             const nombreMostrar = nombreArchivoGuardado ? nombreArchivoGuardado : 'Lista en memoria';
             
-            // Validamos existencia antes de asignar texto
             if (indicadorNombre) {
                 indicadorNombre.innerText = `[${nombreMostrar}] - ${Object.keys(diccionarioSKU).length} productos.`;
                 indicadorNombre.classList.replace('text-dark-muted', 'text-green-400');
@@ -102,7 +181,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // 6. PROCESAMIENTO DE NUEVO EXCEL (LISTA DEL DÍA)
+    // --- PROCESAMIENTO DE NUEVO EXCEL ---
     const inputArchivo = document.getElementById('archivo_resurtido');
     if (inputArchivo) {
         inputArchivo.addEventListener('change', async function(e) {
@@ -131,7 +210,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     
                     if (btnLimpiarMemoria) btnLimpiarMemoria.classList.remove('hidden');
                     if (contenedorProductos && contenedorProductos.children.length === 0) agregarFilaProducto();
-                    if(typeof window.mostrarToast === 'function') window.mostrarToast('Lista guardada.', 'green');
                 }
             } catch (error) {
                 console.error(error);
@@ -142,7 +220,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // 7. FILAS DINÁMICAS Y AUTOCOMPLETADO
+    // --- FILAS DINÁMICAS Y AUTOCOMPLETADO ---
     function agregarFilaProducto() {
         const div = document.createElement('div');
         div.className = "grid grid-cols-12 gap-3 items-end producto-fila bg-dark-800/30 p-2 rounded-lg border border-dark-700/50 mb-2";
@@ -193,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnAgregar = document.getElementById('btnAgregarProducto');
     if (btnAgregar) btnAgregar.addEventListener('click', agregarFilaProducto);
 
-    // 8. GUARDADO MANUAL DEL PEDIDO
+    // --- GUARDADO MANUAL DEL PEDIDO ---
     const formPedido = document.getElementById('formPedido');
     if (formPedido) {
         formPedido.addEventListener('submit', async function(e) {
@@ -212,10 +290,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 productosData.push({ sku, nombre, precio: parseFloat(precio), piezas: parseInt(piezas) });
             });
 
-            if(errorSKU) {
-                if(typeof window.mostrarToast === 'function') window.mostrarToast('Hay SKUs no válidos o sin cargar.', 'red');
-                return;
-            }
+            if(errorSKU) return alert('Hay SKUs no válidos.');
 
             if(typeof window.mostrarCarga === 'function') window.mostrarCarga('Guardando registro...');
 
@@ -241,243 +316,126 @@ document.addEventListener('DOMContentLoaded', function () {
                 const res = await response.json();
 
                 if (res.success) {
-                    if (typeof window.mostrarToast === 'function') window.mostrarToast('Pedido guardado con éxito', 'green');
-                    setTimeout(() => window.location.reload(), 800);
+                    setTimeout(() => window.location.reload(), 500);
                 } else alert("Error: " + (res.message || "Verifica los datos"));
-                
             } catch (error) {
                 console.error(error);
-                alert("Error de conexión al servidor.");
             } finally {
                 if (typeof window.ocultarCarga === 'function') window.ocultarCarga();
             }
         });
     }
 
-    // 9. IMPORTACIÓN HISTÓRICA MASIVA
-    const btnToggleMasivo = document.getElementById('btnToggleMasivo');
-    const panelCargaMasiva = document.getElementById('panelCargaMasiva');
-    const inputHistorico = document.getElementById('archivo_historico');
-    const indicadorHistorico = document.getElementById('nombre_archivo_historico');
+    // --- BUSCADOR Y FILTROS DE TABLA CORREGIDOS ---
+    const inputBuscador = document.getElementById('inputBuscador');
+    const tbodyPedidos = document.querySelector('#tablaPedidos tbody');
 
-    if (btnToggleMasivo && panelCargaMasiva) {
-        btnToggleMasivo.addEventListener('click', () => panelCargaMasiva.classList.toggle('hidden'));
+    if (inputBuscador && tbodyPedidos) {
+        inputBuscador.addEventListener('input', function() {
+            const termino = this.value.toLowerCase().trim();
+            const filas = document.querySelectorAll('.registro-fila');
+            
+            filas.forEach(fila => {
+                const numPedido = fila.getAttribute('data-pedido').toLowerCase();
+                fila.style.display = numPedido.includes(termino) ? '' : 'none';
+            });
+        });
     }
 
-    if (inputHistorico) {
-        inputHistorico.addEventListener('change', async function(e) {
-            const file = e.target.files[0];
-            if(!file) return;
-
-            // PARCHE DE SEGURIDAD 1
-            if (indicadorHistorico) {
-                indicadorHistorico.innerText = `Procesando ${file.name}...`;
-            }
+    document.querySelectorAll('.th-sort').forEach(header => {
+        header.addEventListener('click', () => {
+            const criterio = header.getAttribute('data-sort');
+            const filas = Array.from(document.querySelectorAll('.registro-fila'));
+            const esAsc = header.classList.contains('asc');
             
-            if(typeof window.mostrarCarga === 'function') window.mostrarCarga('Agrupando pedidos e insertando en base de datos...');
+            // Iconos UI
+            document.querySelectorAll('.th-sort span').forEach(s => s.innerText = 'unfold_more');
+            header.querySelector('span').innerText = esAsc ? 'expand_more' : 'expand_less';
 
-            const formData = new FormData();
-            formData.append('archivo_historico', file);
-            formData.append('_token', config.token);
+            filas.sort((a, b) => {
+                let valA = a.getAttribute(`data-${criterio}`);
+                let valB = b.getAttribute(`data-${criterio}`);
+
+                if (['comision', 'venta', 'utilidad'].includes(criterio)) {
+                    return esAsc ? parseFloat(valA) - parseFloat(valB) : parseFloat(valB) - parseFloat(valA);
+                }
+                
+                return esAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            });
+
+            header.classList.toggle('asc', !esAsc);
+            filas.forEach(fila => tbodyPedidos.appendChild(fila));
+        });
+    });
+
+    // --- ACTUALIZACIÓN DE COMISIONES (MODAL) ---
+    const formConfig = document.getElementById('formUpdateComisiones');
+    if (formConfig) {
+        formConfig.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const payload = Array.from(document.querySelectorAll('.input-config-comision')).map(input => ({
+                id: input.getAttribute('data-id'),
+                percent: input.value
+            }));
 
             try {
-                const response = await fetch('/contabilidad/importar-historico', { method: 'POST', body: formData });
+                const response = await fetch(config.rutas.updateComisiones, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.token },
+                    body: JSON.stringify({ plataformas: payload })
+                });
                 const res = await response.json();
+                if(res.success) window.location.reload();
+            } catch (e) { console.error(e); }
+        });
+    }
 
-                if(res.success) {
-                    if(typeof window.mostrarToast === 'function') window.mostrarToast(res.message, 'green');
-                    setTimeout(() => window.location.reload(), 1500);
-                } else {
-                    alert("Error: " + res.message);
-                    
-                    // PARCHE DE SEGURIDAD 2
-                    if (indicadorHistorico) {
-                        indicadorHistorico.innerText = "Error en el formato.";
+    // --- GRÁFICA PRINCIPAL ---
+    function renderGraficaUtilidad() {
+        const ctx = document.getElementById('utilidadChart');
+        if (!ctx) return;
+
+        const dataRaw = config.graficaData || {};
+        const labels = Object.keys(dataRaw).reverse();
+        const values = labels.map(k => dataRaw[k].utilidad);
+
+        new Chart(ctx.getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Utilidad Neta',
+                    data: values,
+                    backgroundColor: values.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'),
+                    borderColor: values.map(v => v >= 0 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)'),
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => ` $${ctx.raw.toLocaleString('es-MX', {minimumFractionDigits: 2})}`
+                        }
                     }
+                },
+                scales: {
+                    y: {
+                        grid: { color: '#334155' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: (val) => `$${val.toLocaleString()}`
+                        }
+                    },
+                    x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
                 }
-            } catch (error) {
-                console.error(error);
-                alert("Fallo de conexión en la carga masiva.");
-            } finally {
-                if(typeof window.ocultarCarga === 'function') window.ocultarCarga();
             }
         });
     }
 
-    // -----------------------------------------------------------
-    // 10. MOTOR DE GRÁFICAS (DASHBOARD & PRINCIPAL)
-    // -----------------------------------------------------------
-    const btnAbrirDashboard = document.getElementById('btnAbrirDashboard');
-    const btnCerrarDashboard = document.getElementById('btnCerrarDashboard');
-    const modalDashboard = document.getElementById('modalDashboard');
-    
-    let chartDona = null;
-    let chartBarras = null;
-
-    // --- Lógica de Filtros UI en Dashboard ---
-    const selectFiltro = document.getElementById('dash_filtro_tipo');
-    const contMes = document.getElementById('filtro_mes_container');
-    const contDia = document.getElementById('filtro_dia_container');
-    const contCustom = document.getElementById('filtro_custom_container');
-
-    if (selectFiltro) {
-        selectFiltro.addEventListener('change', function() {
-            contMes.classList.add('hidden');
-            contDia.classList.add('hidden');
-            contCustom.classList.add('hidden');
-
-            if(this.value === 'mes' || this.value === 'anio') contMes.classList.remove('hidden');
-            if(this.value === 'dia') contDia.classList.remove('hidden');
-            if(this.value === 'custom') contCustom.classList.remove('hidden');
-        });
-    }
-
-    // --- Apertura y Petición de Datos ---
-    if (btnAbrirDashboard && modalDashboard) {
-        btnAbrirDashboard.addEventListener('click', () => {
-            modalDashboard.classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; 
-            cargarDatosDashboard();
-        });
-
-        btnCerrarDashboard.addEventListener('click', () => {
-            modalDashboard.classList.add('hidden');
-            document.body.style.overflow = 'auto';
-        });
-        
-        document.getElementById('btnActualizarDashboard')?.addEventListener('click', cargarDatosDashboard);
-    }
-
-    async function cargarDatosDashboard() {
-        if(typeof window.mostrarCarga === 'function') window.mostrarCarga('Analizando finanzas...');
-
-        const params = new URLSearchParams({
-            filtro: selectFiltro.value,
-            mes: document.getElementById('dash_mes').value,
-            anio: document.getElementById('dash_anio').value,
-            fecha: document.getElementById('dash_fecha').value,
-            inicio: document.getElementById('dash_inicio').value,
-            fin: document.getElementById('dash_fin').value,
-        });
-
-        try {
-            const response = await fetch(`/contabilidad/dashboard-data?${params.toString()}`);
-            const data = await response.json();
-            renderizarDashboardAvanzado(data);
-        } catch(e) {
-            console.error(e);
-            alert("Error al cargar datos del dashboard.");
-        } finally {
-            if(typeof window.ocultarCarga === 'function') window.ocultarCarga();
-        }
-    }
-
-    function renderizarDashboardAvanzado(data) {
-        // Formateador de moneda rápido
-        const formatMoney = (val) => new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(val);
-
-        // Actualización de KPIs
-        document.getElementById('kpi_ventas').innerText = formatMoney(data.kpis.ventas);
-        document.getElementById('kpi_ganancias').innerText = formatMoney(data.kpis.ganancias);
-        document.getElementById('kpi_perdidas').innerText = formatMoney(data.kpis.perdidas);
-        document.getElementById('kpi_comisiones').innerText = formatMoney(data.kpis.comisiones);
-
-        // Destruimos gráficas previas para no sobreponerlas
-        if (chartDona) chartDona.destroy();
-        if (chartBarras) chartBarras.destroy();
-
-        // Identidad Corporativa de Pasarelas
-        const coloresPlataformas = {
-            'paypal': '#0079C1',
-            'mercadopago': '#F5C20F',
-            'kueskipay': '#00E5FF',
-            'stripe': '#8271DF'
-        };
-
-        const ctxPlataformas = document.getElementById('chartPlataformas');
-        if (ctxPlataformas) {
-            let labelsPlat = Object.keys(data.plataformas);
-            let dataPlat = Object.values(data.plataformas);
-            
-            if(labelsPlat.length === 0) { labelsPlat = ['Sin Datos']; dataPlat = [1]; }
-
-            const backgroundColors = labelsPlat.map(name => {
-                const cleanName = name.toLowerCase().replace(/\s+/g, '');
-                return coloresPlataformas[cleanName] || '#64748b'; // Plataformas genéricas van en gris
-            });
-
-            chartDona = new Chart(ctxPlataformas.getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: labelsPlat,
-                    datasets: [{ data: dataPlat, backgroundColor: backgroundColors, borderWidth: 0 }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom', labels: { color: '#94a3b8' } },
-                        tooltip: { callbacks: { label: (ctx) => ` $${ctx.raw.toFixed(2)}` } }
-                    }
-                }
-            });
-        }
-
-        const ctxComparativa = document.getElementById('chartVentasUtilidad');
-        if (ctxComparativa) {
-            let labelsFechas = Object.keys(data.grafica);
-            let dataVentas = labelsFechas.map(k => data.grafica[k].venta);
-            let dataUtilidades = labelsFechas.map(k => data.grafica[k].utilidad);
-
-            if(labelsFechas.length === 0) { labelsFechas = ['Sin Datos']; dataVentas = [0]; dataUtilidades = [0]; }
-
-            chartBarras = new Chart(ctxComparativa.getContext('2d'), {
-                type: 'bar',
-                data: {
-                    labels: labelsFechas,
-                    datasets: [
-                        { 
-                            label: 'Ventas Totales (Bruto)', 
-                            data: dataVentas, 
-                            backgroundColor: 'rgba(59, 130, 246, 0.25)', // Azul opaco para fondo
-                            borderColor: 'rgba(59, 130, 246, 1)',
-                            borderWidth: 1,
-                            borderRadius: 4
-                        },
-                        { 
-                            label: 'Utilidad Neta', 
-                            data: dataUtilidades, 
-                            backgroundColor: 'rgba(16, 185, 129, 0.95)', // Verde brillante
-                            borderRadius: 4 
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: { 
-                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, 
-                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } } 
-                    },
-                    plugins: { legend: { labels: { color: '#f8fafc' } } }
-                }
-            });
-        }
-    }
-
-    // Arranque de Gráfica de vista principal
-    function inicializarGrafica() {
-        const ctx = document.getElementById('utilidadChart');
-        if (!ctx) return;
-        const chartData = window.ContabilidadConfig.graficaData || {};
-        let labels = Object.keys(chartData).reverse();
-        let dataPoints = labels.map(k => chartData[k].utilidad); 
-        if (labels.length === 0) { labels = ['Sin Datos']; dataPoints = [0]; }
-        const bgColors = dataPoints.map(val => val >= 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)');
-        const borderColors = dataPoints.map(val => val >= 0 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)');
-        new Chart(ctx.getContext('2d'), {
-            type: 'bar',
-            data: { labels: labels, datasets: [{ label: 'Utilidad por Día', data: dataPoints, backgroundColor: bgColors, borderColor: borderColors, borderWidth: 1, borderRadius: 4 }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }, x: { grid: { display: false }, ticks: { color: '#94a3b8' } } } }
-        });
-    }
-    inicializarGrafica();
+    renderGraficaUtilidad();
 });

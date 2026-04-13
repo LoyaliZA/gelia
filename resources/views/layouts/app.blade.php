@@ -46,7 +46,8 @@
                             class="text-dark-muted hover:text-bella-main px-3 py-2 rounded-md text-sm font-medium transition-colors">Bellaroma</a>
                         <a href="{{ route('woocommerce.index') }}"
                             class="text-dark-muted hover:text-woocommerce-main px-3 py-2 rounded-md text-sm font-medium transition-colors">WooCommerce</a>
-                        
+                        <a href="{{ route('contabilidad.index') }}"
+                            class="text-dark-muted hover:text-contabilidad-main px-3 py-2 rounded-md text-sm font-medium transition-colors">Contabilidad</a>
                     </div>
                 </div>
 
@@ -74,6 +75,8 @@
                     class="text-dark-muted hover:text-bella-main block px-3 py-2 rounded-md text-base font-medium">Bellaroma</a>
                 <a href="{{ route('woocommerce.index') }}"
                     class="text-dark-muted hover:text-woocommerce-main block px-3 py-2 rounded-md text-base font-medium">WooCommerce</a>
+                <a href="{{ route('contabilidad.index') }}"
+                    class="text-dark-muted hover:text-contabilidad-main block px-3 py-2 rounded-md text-base font-medium">Contabilidad</a>
                 
     
                     

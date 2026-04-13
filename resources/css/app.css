@@ -58,12 +58,12 @@ details>summary::-webkit-details-marker {
     --color-bella-light: #fb7185;
 
     /* Departamento: WooComerce (tonos violetas y azules) */
-    --color-woocommerce-dark: #0f172a;
-    --color-woocommerce-main: #3b82f6;
-    --color-woocommerce-light: #93c5fd;
+    --color-woocommerce-dark: #381745;
+    --color-woocommerce-main: #C527F5;
+    --color-woocommerce-light: #FCC7FF;
 
-    /* Departamento: Plataformas (Tonos Naranja/Amarillo) */
-    --color-plataformas-dark: #78350f;
-    --color-plataformas-main: #f59e0b;
-    --color-plataformas-light: #fbbf24;
+    /* Departamento: Contabilidad (Tonos ) */
+    --color-contabilidad-dark: #5E3912;
+    --color-contabilidad-main: #E3A730;
+    --color-contabilidad-light: #F5CE78;
 }

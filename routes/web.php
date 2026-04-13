@@ -146,6 +146,8 @@ Route::prefix('contabilidad')->middleware('auth')->group(function () {
     Route::post('/procesar-lista', [ContabilidadController::class, 'procesarLista'])->name('contabilidad.procesar-lista');
     Route::post('/guardar-pedido', [ContabilidadController::class, 'guardarPedido'])->name('contabilidad.guardar-pedido');
     Route::delete('/eliminar-pedido/{id}', [ContabilidadController::class, 'eliminarPedido'])->name('contabilidad.eliminar-pedido');
+    Route::post('/actualizar-comisiones', [ContabilidadController::class, 'actualizarComisiones'])->name('contabilidad.actualizar-comisiones');
+    Route::put('/actualizar-pedido/{id}', [ContabilidadController::class, 'actualizarPedidoRapido'])->name('contabilidad.actualizar-pedido');
     //Carga masiva de pedidos desde Excel (similar a la función procesarLista pero con validaciones específicas para pedidos)
     Route::get('/descargar-plantilla', [ContabilidadController::class, 'descargarPlantilla'])->name('contabilidad.descargar-plantilla');
     Route::post('/importar-historico', [ContabilidadController::class, 'importarHistorico'])->name('contabilidad.importar-historico');

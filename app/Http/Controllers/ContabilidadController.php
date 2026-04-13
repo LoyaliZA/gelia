@@ -22,23 +22,40 @@ class ContabilidadController extends Controller
 
     public function index(Request $request)
     {
-        $platforms = Platform::where('active', true)->get();
+        $platforms = \App\Models\Platform::where('active', true)->get();
 
         $mesActual = $request->input('mes', date('m'));
         $anioActual = $request->input('anio', date('Y'));
 
-        $pedidos = ContabilidadPedido::with(['detalles', 'platform'])
+        $pedidos = \App\Models\ContabilidadPedido::with(['detalles', 'platform'])
             ->whereMonth('fecha_salida', $mesActual)
             ->whereYear('fecha_salida', $anioActual)
             ->orderBy('fecha_salida', 'desc')
             ->get();
 
-        // Extraemos las comisiones agrupadas por plataforma para la gráfica de Dona
         $comisionesPorPlataforma = $pedidos->groupBy('platform.name')->map(function ($row) {
             return $row->sum('comision_plataforma');
         });
 
-        return view('contabilidad.index', compact('platforms', 'pedidos', 'mesActual', 'anioActual', 'comisionesPorPlataforma'));
+        // 1. NUEVO CÓDIGO: Agrupamos los pedidos por fecha para inyectarlos a la gráfica
+        $datosGrafica = $pedidos->groupBy(function($date) {
+            return \Carbon\Carbon::parse($date->fecha_salida)->format('Y-m-d');
+        })->map(function ($row) {
+            return [
+                'utilidad' => $row->sum('utilidad_total'),
+                'venta' => $row->sum('venta_total')
+            ];
+        });
+
+        // 2. CORRECCIÓN: Agregamos 'datosGrafica' dentro de la función compact()
+        return view('contabilidad.index', compact(
+            'platforms', 
+            'pedidos', 
+            'mesActual', 
+            'anioActual', 
+            'comisionesPorPlataforma', 
+            'datosGrafica'
+        ));
     }
 
     /**
@@ -147,7 +164,9 @@ class ContabilidadController extends Controller
 
             // Validamos la comisión sobreescrita
             $comisionFinal = $request->filled('comision_real') ? (float) $request->comision_real : (float) $finanzas['total_commission'];
-            $$tipoTransaccion = $request->input('tipo_transaccion', 'venta');
+            
+            // CORRECCIÓN: Asignación estándar con un solo signo de dólar
+            $tipoTransaccion = $request->input('tipo_transaccion', 'venta');
 
             if ($tipoTransaccion === 'venta') {
                 $utilidadFinal = $ventaTotal - $costoProductos - $gastoEnvioEmpresa - $comisionFinal;
@@ -405,5 +424,88 @@ class ContabilidadController extends Controller
             'plataformas' => $comisionesPlataforma,
             'grafica' => $grafica
         ]);
+    }
+
+    /**
+     * Actualiza las comisiones de las plataformas desde el modal de configuración.
+     */
+    public function actualizarComisiones(Request $request)
+    {
+        $request->validate([
+            'plataformas' => 'required|array',
+            'plataformas.*.id' => 'required|exists:platforms,id',
+            'plataformas.*.commission_percent' => 'required|numeric|min:0|max:100',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            foreach ($request->plataformas as $plat) {
+                Platform::where('id', $plat['id'])->update([
+                    'commission_percent' => $plat['commission_percent']
+                ]);
+            }
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Comisiones actualizadas.']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error("Error actualizando comisiones: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al guardar.'], 500);
+        }
+    }
+
+    /**
+     * Actualización rápida de montos financieros de un pedido.
+     */
+    public function actualizarPedidoRapido(Request $request, $id)
+    {
+        $request->validate([
+            'tipo_transaccion' => 'required|string',
+            'platform_id' => 'required|exists:platforms,id',
+            'venta_total' => 'required|numeric',
+            'costo_envio' => 'required|numeric',
+            'comision_plataforma' => 'required|numeric',
+        ]);
+
+        try {
+            DB::beginTransaction();
+            $pedido = ContabilidadPedido::with('detalles')->findOrFail($id);
+
+            if ($pedido->bloqueado) {
+                return response()->json(['success' => false, 'message' => 'El periodo está bloqueado.'], 403);
+            }
+
+            // Recalcular el costo total de los productos que ya tiene el pedido
+            $costoProductos = $pedido->detalles->sum('subtotal');
+
+            // Asumimos que si hay costo de envío, lo paga la empresa. Si el usuario lo requiere, 
+            // se puede expandir, pero para edición rápida esto cubre el 90% de los errores tipográficos.
+            $gastoEnvio = (float) $request->costo_envio;
+            $comision = (float) $request->comision_plataforma;
+            $venta = (float) $request->venta_total;
+            $tipo = strtolower($request->tipo_transaccion);
+
+            if (str_contains($tipo, 'venta')) {
+                $utilidad = $venta - $costoProductos - $gastoEnvio - $comision;
+            } else {
+                // Reembolso o contracargo (Pérdida neta)
+                $utilidad = -($costoProductos + $gastoEnvio + $comision);
+            }
+
+            $pedido->update([
+                'tipo_transaccion' => $tipo,
+                'platform_id' => $request->platform_id,
+                'venta_total' => $venta,
+                'costo_envio' => $gastoEnvio,
+                'comision_plataforma' => $comision,
+                'utilidad_total' => $utilidad
+            ]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Pedido actualizado.']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error("Error actualizando pedido {$id}: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Error al actualizar.'], 500);
+        }
     }
 }
