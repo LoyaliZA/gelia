@@ -7,7 +7,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use App\Models\WoocommerceProduct;
 use App\Models\WoocommerceMargin;
@@ -18,14 +17,18 @@ use App\Mail\WooSyncExitoMail;
 use App\Mail\WooSyncFalloMail;
 use Rap2hpoutre\FastExcel\FastExcel;
 
+// CAMBIO NUEVO: Importación del Trait
+use App\Traits\InteractsWithWooCommerceApi;
+
 class UpdateWooCommercePricesJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    // CAMBIO NUEVO: Implementación del Trait en la clase
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, InteractsWithWooCommerceApi;
 
     protected $syncLogId;
     protected $preciosWizerp;
-    protected $ck = 'ck_dd5b2465b10fb66949a1c1ebde972f7d784abb8c';
-    protected $cs = 'cs_b3654aa5868e953a050186d2118c9a76eb9bdbb7';
+    
+    // CAMBIO NUEVO: Propiedades $ck y $cs eliminadas por seguridad.
 
     public function __construct($syncLogId, $preciosWizerp)
     {
@@ -107,13 +110,16 @@ class UpdateWooCommercePricesJob implements ShouldQueue
      */
     private function enviarLotesWooCommerce(array $simples, array $variaciones): void
     {
+        // CAMBIO NUEVO: Lectura de la URL base desde la configuración
+        $baseUrl = config('services.woocommerce.url') . '/wp-json/wc/v3/products';
+
         if (!empty($simples)) {
-            $this->ejecutarPeticionBatch("https://www.bellaroma.mx/wp-json/wc/v3/products/batch", $simples);
+            $this->ejecutarPeticionBatch("{$baseUrl}/batch", $simples);
         }
 
         if (!empty($variaciones)) {
             foreach ($variaciones as $parentId => $variacionesHijas) {
-                $url = "https://www.bellaroma.mx/wp-json/wc/v3/products/{$parentId}/variations/batch";
+                $url = "{$baseUrl}/{$parentId}/variations/batch";
                 $this->ejecutarPeticionBatch($url, $variacionesHijas);
             }
         }
@@ -124,29 +130,16 @@ class UpdateWooCommercePricesJob implements ShouldQueue
      */
     private function ejecutarPeticionBatch(string $url, array $datosUpdate): void
     {
-        $response = Http::withHeaders([
-            'User-Agent' => 'GeliaSystem-SyncBot/1.0',
-            'Accept' => 'application/json'
-        ])
-        ->withBasicAuth($this->ck, $this->cs)
-        ->timeout(45)
-        ->post($url, ['update' => $datosUpdate]);
+        // CAMBIO NUEVO: Uso del cliente HTTP del Trait y validación centralizada.
+        $response = $this->getWooClient('GeliaSystem-SyncBot/1.0')
+                         ->post($url, ['update' => $datosUpdate]);
 
-        $this->validarRespuestaRed($response);
+        $this->validateSecurityResponse($response);
+        
         usleep(500000); // Pausa de 0.5s por lote
     }
 
-    private function validarRespuestaRed($response): void
-    {
-        $status = $response->status();
-        if ($status === 429 || $status === 403 || $status === 503) {
-            throw new \Exception("Bloqueo de seguridad detectado en destino (HTTP {$status}). Lote abortado.");
-        }
-        if (!$response->successful()) {
-            throw new \Exception("Error en sincronización: " . $response->body());
-        }
-    }
-
+    // Funciones internas mantenidas sin cambios
     private function calcularPrecioFinal($base, $tipo, $margenes, $iva)
     {
         $multiplicador = 1.0;
@@ -178,13 +171,11 @@ class UpdateWooCommercePricesJob implements ShouldQueue
         $adminEmail = WoocommerceConfig::where('llave', 'admin_email')->value('valor') ?? 'tu_correo_admin@dominio.com';
         
         if ($log->estado === 'completado') {
-            // ÉXITO
             $notifyStr = WoocommerceConfig::where('llave', 'notify_emails')->value('valor');
             $destinatarios = $notifyStr ? array_filter(array_map('trim', explode(',', $notifyStr))) : [];
             $destinatarios[] = $adminEmail; 
             $destinatarios = array_unique($destinatarios);
 
-            // Generar el archivo CSV temporal
             $detalles = \App\Models\WoocommerceSyncDetail::where('sync_log_id', $log->id)->get();
             $tempPath = tempnam(sys_get_temp_dir(), 'woo_auditoria_');
             
@@ -200,14 +191,10 @@ class UpdateWooCommercePricesJob implements ShouldQueue
                 ];
             });
 
-            // Usar la nueva clase Mailable
             Mail::to($destinatarios)->send(new WooSyncExitoMail($log, $tempPath));
-
-            // Eliminar archivo temporal
             unlink($tempPath); 
 
         } else {
-            // FALLO (Solo enviamos al admin usando la clase Mailable)
             Mail::to($adminEmail)->send(new WooSyncFalloMail($log));
         }
     }

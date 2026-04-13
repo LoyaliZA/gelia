@@ -16,8 +16,14 @@ use App\Models\WoocommerceSyncLog;
 use App\Jobs\UpdateWooCommercePricesJob;
 use App\Jobs\FetchWooCommercePricesJob;
 
+// CAMBIO NUEVO: Importación del Trait de seguridad
+use App\Traits\InteractsWithWooCommerceApi;
+
 class BellaromaCargaPreciosController extends Controller
 {
+    // CAMBIO NUEVO: Implementación del Trait en la clase
+    use InteractsWithWooCommerceApi;
+
     /**
      * Vista principal: Historial, Configuración e Inventario Paginado.
      */
@@ -36,11 +42,9 @@ class BellaromaCargaPreciosController extends Controller
         $configIva = WoocommerceConfig::where('llave', 'iva')->first();
         $iva = $configIva ? (float) $configIva->valor : 1.16;
         $margenes = WoocommerceMargin::orderBy('precio_min')->get();
-        // En la función index(), agrega estas dos líneas donde consultas el IVA:
         $adminEmail = WoocommerceConfig::where('llave', 'admin_email')->first()->valor ?? '';
         $notifyEmails = WoocommerceConfig::where('llave', 'notify_emails')->first()->valor ?? '';
 
-        // Detección de proceso en background para persistencia de UI
         // Detección de proceso en background con SEGURO ANTI-ZOMBIES (10 minutos de inactividad máxima)
         $procesoActivo = WoocommerceSyncLog::whereIn('estado', ['pendiente', 'en_proceso'])
             ->where('updated_at', '>=', now()->subMinutes(10))
@@ -162,7 +166,6 @@ class BellaromaCargaPreciosController extends Controller
 
     /**
      * FASE 1: Previsualización (Dry-Run).
-     * Analiza el Excel y devuelve los cambios pendientes sin tocar la API externa.
      */
     public function previsualizarCarga(Request $request)
     {
@@ -233,7 +236,6 @@ class BellaromaCargaPreciosController extends Controller
 
     /**
      * FASE 2: Ejecución de la Carga Masiva.
-     * Despacha el Job con los datos ya validados.
      */
     public function iniciarCargaMasiva(Request $request)
     {
@@ -357,11 +359,9 @@ class BellaromaCargaPreciosController extends Controller
                     ->orWhere('estado', 'LIKE', "%{$search}%");
             })
             ->when($fechaInicio && $fechaFin, function ($q) use ($fechaInicio, $fechaFin) {
-                // Rango de fechas
                 return $q->whereBetween('created_at', [$fechaInicio . ' 00:00:00', $fechaFin . ' 23:59:59']);
             })
             ->when($fechaInicio && !$fechaFin, function ($q) use ($fechaInicio) {
-                // Fecha única
                 return $q->whereDate('created_at', $fechaInicio);
             })
             ->orderByDesc('id')
@@ -384,7 +384,6 @@ class BellaromaCargaPreciosController extends Controller
 
         $fileName = 'AUDITORIA-PRECIOS-' . $id . '-' . date('Ymd_Hi') . '.csv';
 
-        // Usamos FastExcel para generar el archivo limpiamente mapeando las columnas
         return (new \Rap2hpoutre\FastExcel\FastExcel($detalles))->download($fileName, function ($detalle) {
             return [
                 'SKU' => $detalle->sku,
@@ -408,13 +407,15 @@ class BellaromaCargaPreciosController extends Controller
 
         $producto = WoocommerceProduct::findOrFail($id);
 
-        $ck = 'ck_dd5b2465b10fb66949a1c1ebde972f7d784abb8c';
-        $cs = 'cs_b3654aa5868e953a050186d2118c9a76eb9bdbb7';
+        // CAMBIO NUEVO: Lectura de URL desde configuración segura.
+        $baseUrl = config('services.woocommerce.url');
 
-        $response = Http::withBasicAuth($ck, $cs)->put("https://www.bellaroma.mx/wp-json/wc/v3/products/{$producto->id}", [
-            'regular_price' => (string) $request->precio_normal,
-            'sale_price' => (string) $request->precio_rebajado
-        ]);
+        // CAMBIO NUEVO: Sustitución de Http::withBasicAuth por el cliente encapsulado del Trait.
+        $response = $this->getWooClient('GeliaSystem-Admin/1.0')
+                         ->put("{$baseUrl}/wp-json/wc/v3/products/{$producto->id}", [
+                             'regular_price' => (string) $request->precio_normal,
+                             'sale_price' => (string) $request->precio_rebajado
+                         ]);
 
         if ($response->successful()) {
             $producto->update([
@@ -427,15 +428,11 @@ class BellaromaCargaPreciosController extends Controller
         return response()->json(['success' => false, 'message' => $response->json('message', 'Error desconocido en API')], 400);
     }
 
-    // En BellaromaCargaPreciosController.php
-
     /**
      * Retorna la vista o los datos de productos con anomalías
      */
     public function alertasInventario()
     {
-        // Criterio: Existe en BD local, no tiene precio asignado, pero lo consideramos activo.
-        // Ajusta la condición de 'stock' si cuentas con esa columna, de lo contrario validamos por precio 0 o nulo.
         $productosCriticos = WoocommerceProduct::where(function ($query) {
             $query->whereNull('precio_normal')
                 ->orWhere('precio_normal', '<=', 0);
@@ -453,27 +450,30 @@ class BellaromaCargaPreciosController extends Controller
         $ids = $request->input('productos_ids', []);
         if (empty($ids)) return response()->json(['error' => 'No hay productos seleccionados'], 400);
 
-        $ck = 'ck_dd5b2465b10fb66949a1c1ebde972f7d784abb8c';
-        $cs = 'cs_b3654aa5868e953a050186d2118c9a76eb9bdbb7';
-
         $errores = 0;
+        
+        // CAMBIO NUEVO: Lectura de URL desde configuración segura.
+        $baseUrl = config('services.woocommerce.url');
 
         foreach ($ids as $id) {
             $prod = WoocommerceProduct::find($id);
             if (!$prod) continue;
 
             $url = $prod->tipo === 'variation'
-                ? "https://www.bellaroma.mx/wp-json/wc/v3/products/{$prod->parent_id}/variations/{$prod->id}"
-                : "https://www.bellaroma.mx/wp-json/wc/v3/products/{$prod->id}";
+                ? "{$baseUrl}/wp-json/wc/v3/products/{$prod->parent_id}/variations/{$prod->id}"
+                : "{$baseUrl}/wp-json/wc/v3/products/{$prod->id}";
 
-            // Establecer status a 'draft' (borrador) es más seguro que poner inventario a 0 manualmente
-            $response = Http::withBasicAuth($ck, $cs)->put($url, [
+            // CAMBIO NUEVO: Sustitución por el cliente encapsulado del Trait.
+            $response = $this->getWooClient('GeliaSystem-Admin/1.0')->put($url, [
                 'status' => 'draft'
             ]);
 
             if (!$response->successful()) {
                 $errores++;
             }
+            
+            // CAMBIO NUEVO: Prevención de Rate Limiting en caso de selección masiva.
+            usleep(300000); 
         }
 
         return response()->json([
@@ -489,12 +489,9 @@ class BellaromaCargaPreciosController extends Controller
     {
         $log = WoocommerceSyncLog::findOrFail($id);
 
-        // Solo permitimos cancelar si está atascado
         if ($log->estado === 'en_proceso') {
             $log->update([
                 'estado' => 'cancelado',
-                // Opcional: Si tienes una columna de notas/errores
-                // 'error' => 'Cancelado manualmente por el administrador (Kill Switch).'
             ]);
 
             return back()->with('success', 'El proceso fantasma fue cancelado exitosamente.');
@@ -508,9 +505,7 @@ class BellaromaCargaPreciosController extends Controller
         $log = WoocommerceSyncLog::findOrFail($id);
 
         if ($log->estado === 'en_proceso') {
-            // Ejecuta el comando nativo de Laravel para reintentar los jobs fallidos
             Artisan::call('queue:retry', ['id' => 'all']);
-
             return back()->with('success', 'Proceso reanudado. El sistema continuará desde donde se detuvo.');
         }
 

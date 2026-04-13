@@ -42,4 +42,10 @@ return [
         'folder_id' => env('GOOGLE_DRIVE_FOLDER_ID'),
     ],
 
+    'woocommerce' => [
+        'url' => env('WOOCOMMERCE_STORE_URL'),
+        'key' => env('WOOCOMMERCE_CONSUMER_KEY'),
+        'secret' => env('WOOCOMMERCE_CONSUMER_SECRET'),
+    ],
+
 ];

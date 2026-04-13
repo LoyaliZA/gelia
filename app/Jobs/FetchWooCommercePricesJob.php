@@ -7,14 +7,17 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
 use App\Models\WoocommerceProduct;
 use App\Models\WoocommerceSyncLog;
 use App\Models\WoocommerceSyncDetail;
 
+// CAMBIO NUEVO: Importación del Trait
+use App\Traits\InteractsWithWooCommerceApi;
+
 class FetchWooCommercePricesJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    // CAMBIO NUEVO: Implementación del Trait en la clase
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, InteractsWithWooCommerceApi;
 
     protected $syncLogId;
 
@@ -30,48 +33,41 @@ class FetchWooCommercePricesJob implements ShouldQueue
 
         $log->update(['estado' => 'en_proceso']);
 
-        $ck = 'ck_dd5b2465b10fb66949a1c1ebde972f7d784abb8c';
-        $cs = 'cs_b3654aa5868e953a050186d2118c9a76eb9bdbb7';
-        $baseUrl = 'https://www.bellaroma.mx/wp-json/wc/v3/products';
+        // CAMBIO NUEVO: Lectura de la URL dinámica desde la configuración segura.
+        $baseUrl = config('services.woocommerce.url') . '/wp-json/wc/v3/products';
 
         $page = 1;
         $procesados = 0;
 
         do {
-            $response = Http::withHeaders([
-                'User-Agent' => 'GeliaSystem-FetchBot/1.0',
-                'Accept' => 'application/json',
-            ])
-            ->withBasicAuth($ck, $cs)
-            ->timeout(60)
-            ->get($baseUrl, [
-                'per_page' => 100, 
-                'page' => $page,
-                '_fields' => 'id,sku,regular_price,sale_price' 
-            ]);
+            try {
+                // CAMBIO NUEVO: Uso del cliente HTTP del Trait para operaciones de lectura.
+                $response = $this->getWooClient('GeliaSystem-FetchBot/1.0')
+                    ->get($baseUrl, [
+                        'per_page' => 100,
+                        'page'     => $page,
+                        '_fields'  => 'id,sku,regular_price,sale_price'
+                    ]);
 
-            if ($response->status() === 403 || $response->status() === 503 || $response->status() === 429) {
-                $log->update(['estado' => 'error', 'mensaje' => "Bloqueo perimetral (HTTP {$response->status()})."]);
-                throw new \Exception("Conexión rechazada por firewall en lectura.");
-            }
+                // CAMBIO NUEVO: Validación de red centralizada.
+                $this->validateSecurityResponse($response);
 
-            if (!$response->successful()) {
-                $log->update(['estado' => 'error']);
+                $productosWoo = $response->json();
+                if (empty($productosWoo)) break;
+
+                $this->procesarPaginaLocal($productosWoo, $log);
+
+                $procesados += count($productosWoo);
+                $log->update(['procesados' => $procesados]);
+                $page++;
+
+                usleep(350000); // 0.35 segundos para prevenir bloqueos
+
+            } catch (\Exception $e) {
+                // Captura de errores provenientes de validateSecurityResponse
+                $log->update(['estado' => 'error', 'mensaje' => $e->getMessage()]);
                 return;
             }
-
-            $productosWoo = $response->json();
-            if (empty($productosWoo)) break;
-
-            $this->procesarPaginaLocal($productosWoo, $log);
-
-            $procesados += count($productosWoo);
-            $log->update(['procesados' => $procesados]);
-            $page++;
-
-            // Protección vital contra Rate Limiting en GET
-            usleep(350000); // 0.35 segundos
-
         } while (count($productosWoo) === 100);
 
         $log->update(['estado' => 'completado', 'procesados' => $log->total_productos]);
