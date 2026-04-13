@@ -66,6 +66,25 @@ window.abrirModalEdicion = function(id, numPedido, tipo, platformId, venta, envi
 
 document.addEventListener('DOMContentLoaded', function () {
 
+    // --- CONTROL DEL MODAL DASHBOARD (ANÁLISIS FINANCIERO) ---
+    const btnAbrirDashboard = document.getElementById('btnAbrirDashboard');
+    const modalDashboard = document.getElementById('modalDashboard');
+    const btnCerrarDashboard = document.getElementById('btnCerrarDashboard');
+
+    if (btnAbrirDashboard && modalDashboard) {
+        btnAbrirDashboard.addEventListener('click', function() {
+            modalDashboard.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        });
+    }
+
+    if (btnCerrarDashboard && modalDashboard) {
+        btnCerrarDashboard.addEventListener('click', function() {
+            modalDashboard.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+    }
+
     const formEditar = document.getElementById('formEditarPedido');
     if (formEditar) {
         formEditar.addEventListener('submit', async function(e) {
