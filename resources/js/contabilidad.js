@@ -1,9 +1,12 @@
 /*
  * Módulo: Contabilidad Bellaroma
- * Descripción: Maneja la lógica de la interfaz, autocompletado en memoria y gráficas.
+ * Descripción: Maneja la captura de datos, autocompletado en memoria, CRUD rápido y Dashboards de Análisis.
  */
 
-// 1. FUNCIONES GLOBALES (Borrado)
+// ==========================================
+// 1. FUNCIONES GLOBALES (MODALES Y ACCIONES)
+// ==========================================
+
 window.borrarPedido = async function(id) {
     if(!confirm('¿Estás seguro de eliminar este registro para corregirlo?')) return;
     
@@ -50,7 +53,6 @@ window.abrirModalEdicion = function(id, numPedido, tipo, platformId, venta, envi
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_num_pedido').innerText = numPedido;
     
-    // Normalizar el tipo de transacción para el select
     let tipoNormalizado = 'venta';
     if(tipo.includes('reembolso')) tipoNormalizado = 'reembolso';
     if(tipo.includes('contracargo')) tipoNormalizado = 'contracargo';
@@ -64,27 +66,28 @@ window.abrirModalEdicion = function(id, numPedido, tipo, platformId, venta, envi
     document.getElementById('modalEditar').showModal();
 };
 
+// ==========================================
+// 2. INICIALIZACIÓN DEL DOM Y LÓGICA PRINCIPAL
+// ==========================================
+
 document.addEventListener('DOMContentLoaded', function () {
+    const config = window.ContabilidadConfig || {};
+    let diccionarioSKU = {};
 
-    // --- CONTROL DEL MODAL DASHBOARD (ANÁLISIS FINANCIERO) ---
-    const btnAbrirDashboard = document.getElementById('btnAbrirDashboard');
-    const modalDashboard = document.getElementById('modalDashboard');
-    const btnCerrarDashboard = document.getElementById('btnCerrarDashboard');
-
-    if (btnAbrirDashboard && modalDashboard) {
-        btnAbrirDashboard.addEventListener('click', function() {
-            modalDashboard.classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
-        });
+    // --- SANITIZACIÓN DE MONEDA ---
+    function limpiarMoneda(valor) {
+        if (!valor) return '';
+        return valor.replace(/[^0-9.]/g, '');
     }
 
-    if (btnCerrarDashboard && modalDashboard) {
-        btnCerrarDashboard.addEventListener('click', function() {
-            modalDashboard.classList.add('hidden');
-            document.body.style.overflow = '';
+    document.querySelectorAll('.input-moneda').forEach(input => {
+        input.addEventListener('blur', function () {
+            let valorLimpio = limpiarMoneda(this.value);
+            if (valorLimpio !== '') this.value = parseFloat(valorLimpio).toFixed(2);
         });
-    }
+    });
 
+    // --- ACTUALIZACIÓN RÁPIDA DE PEDIDO (MODAL EDITAR) ---
     const formEditar = document.getElementById('formEditarPedido');
     if (formEditar) {
         formEditar.addEventListener('submit', async function(e) {
@@ -101,106 +104,89 @@ document.addEventListener('DOMContentLoaded', function () {
             if(typeof window.mostrarCarga === 'function') window.mostrarCarga('Actualizando montos...');
 
             try {
-                const response = await fetch(`${window.ContabilidadConfig.rutas.actualizarPedidoBase}/${id}`, {
+                const response = await fetch(`${config.rutas.actualizarPedidoBase}/${id}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.ContabilidadConfig.token },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': config.token },
                     body: JSON.stringify(payload)
                 });
                 const res = await response.json();
-                
-                if(res.success) {
-                    window.location.reload();
-                } else {
-                    alert('Error: ' + res.message);
-                }
+                if(res.success) window.location.reload();
+                else alert('Error: ' + res.message);
             } catch(error) {
                 console.error(error);
-                alert('Fallo de conexión.');
+                alert('Fallo de conexión al actualizar.');
             } finally {
                 if(typeof window.ocultarCarga === 'function') window.ocultarCarga();
             }
         });
     }
 
-    // Lógica para togglear el panel de carga masiva (Restaurado)
+    // --- PANELES Y NAVEGACIÓN ---
     const btnToggleMasivo = document.getElementById('btnToggleMasivo');
     const panelCargaMasiva = document.getElementById('panelCargaMasiva');
     if (btnToggleMasivo && panelCargaMasiva) {
         btnToggleMasivo.addEventListener('click', () => panelCargaMasiva.classList.toggle('hidden'));
     }
 
-    const config = window.ContabilidadConfig || {};
-    let diccionarioSKU = {};
+    const btnAbrirDashboard = document.getElementById('btnAbrirDashboard');
+    const modalDashboard = document.getElementById('modalDashboard');
+    const btnCerrarDashboard = document.getElementById('btnCerrarDashboard');
+
+    if (btnAbrirDashboard && modalDashboard) {
+        btnAbrirDashboard.addEventListener('click', function() {
+            modalDashboard.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Evita scroll de fondo
+        });
+    }
+
+    if (btnCerrarDashboard && modalDashboard) {
+        btnCerrarDashboard.addEventListener('click', function() {
+            modalDashboard.classList.add('hidden');
+            document.body.style.overflow = '';
+        });
+    }
+
+    // --- MEMORIA DE ARCHIVO EXCEL ---
     const contenedorProductos = document.getElementById('contenedor_productos');
     const indicadorNombre = document.getElementById('nombre_archivo_resurtido');
     const btnLimpiarMemoria = document.getElementById('btnLimpiarMemoria');
-    // --- FUNCIÓN PARA BORRAR LA LISTA DE LA MEMORIA ---
+
     if (btnLimpiarMemoria) {
         btnLimpiarMemoria.addEventListener('click', function() {
             if(!confirm('¿Estás seguro de cerrar la sesión de esta lista? Se bloqueará el formulario de nuevo.')) return;
-
-            // 1. Limpiar el almacenamiento del navegador y variables
             sessionStorage.removeItem('gelia_lista_resurtido');
             sessionStorage.removeItem('gelia_lista_nombre');
             diccionarioSKU = {};
-
-            // 2. Restaurar la interfaz (Textos y Botones)
             if (indicadorNombre) {
                 indicadorNombre.innerText = 'Sin archivo cargado.';
                 indicadorNombre.classList.replace('text-green-400', 'text-dark-muted');
             }
             this.classList.add('hidden');
-            
             const inputArchivo = document.getElementById('archivo_resurtido');
             if (inputArchivo) inputArchivo.value = '';
-
-            // 3. Volver a bloquear el formulario
             const bloqueoForm = document.getElementById('bloqueo_formulario');
             if (bloqueoForm) bloqueoForm.style.display = 'flex';
-
-            // 4. Limpiar los productos que estaban en el formulario
             if (contenedorProductos) contenedorProductos.innerHTML = '';
         });
     }
 
-    // --- SANITIZACIÓN DE MONEDA ---
-    function limpiarMoneda(valor) {
-        if (!valor) return '';
-        return valor.replace(/[^0-9.]/g, '');
-    }
-
-    document.querySelectorAll('.input-moneda').forEach(input => {
-        input.addEventListener('blur', function () {
-            let valorLimpio = limpiarMoneda(this.value);
-            if (valorLimpio !== '') this.value = parseFloat(valorLimpio).toFixed(2);
-        });
-    });
-
-    // --- RECUPERACIÓN DE MEMORIA DEL EXCEL ---
     const memoriaGuardada = sessionStorage.getItem('gelia_lista_resurtido');
     const nombreArchivoGuardado = sessionStorage.getItem('gelia_lista_nombre');
     
     if (memoriaGuardada) {
         try {
             diccionarioSKU = JSON.parse(memoriaGuardada);
-            const nombreMostrar = nombreArchivoGuardado ? nombreArchivoGuardado : 'Lista en memoria';
-            
             if (indicadorNombre) {
-                indicadorNombre.innerText = `[${nombreMostrar}] - ${Object.keys(diccionarioSKU).length} productos.`;
+                indicadorNombre.innerText = `[${nombreArchivoGuardado || 'Lista en memoria'}] - ${Object.keys(diccionarioSKU).length} productos.`;
                 indicadorNombre.classList.replace('text-dark-muted', 'text-green-400');
             }
-            
             const bloqueoForm = document.getElementById('bloqueo_formulario');
             if (bloqueoForm) bloqueoForm.style.display = 'none';
-            
             if (btnLimpiarMemoria) btnLimpiarMemoria.classList.remove('hidden');
             if (contenedorProductos && contenedorProductos.children.length === 0) agregarFilaProducto();
-        } catch (e) {
-            console.error("Error al recuperar memoria:", e);
-        }
+        } catch (e) { console.error("Error al recuperar memoria:", e); }
     }
 
-    // --- PROCESAMIENTO DE NUEVO EXCEL ---
     const inputArchivo = document.getElementById('archivo_resurtido');
     if (inputArchivo) {
         inputArchivo.addEventListener('change', async function(e) {
@@ -226,12 +212,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     indicadorNombre.innerText = `[${file.name}] - ${Object.keys(diccionarioSKU).length} productos.`;
                     indicadorNombre.classList.replace('text-dark-muted', 'text-green-400');
                     document.getElementById('bloqueo_formulario').style.display = 'none';
-                    
                     if (btnLimpiarMemoria) btnLimpiarMemoria.classList.remove('hidden');
                     if (contenedorProductos && contenedorProductos.children.length === 0) agregarFilaProducto();
                 }
             } catch (error) {
-                console.error(error);
                 alert("Error al procesar el archivo.");
             } finally {
                 if(typeof window.ocultarCarga === 'function') window.ocultarCarga();
@@ -239,7 +223,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- FILAS DINÁMICAS Y AUTOCOMPLETADO ---
+    // --- FILAS DINÁMICAS DE PRODUCTOS ---
     function agregarFilaProducto() {
         const div = document.createElement('div');
         div.className = "grid grid-cols-12 gap-3 items-end producto-fila bg-dark-800/30 p-2 rounded-lg border border-dark-700/50 mb-2";
@@ -290,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const btnAgregar = document.getElementById('btnAgregarProducto');
     if (btnAgregar) btnAgregar.addEventListener('click', agregarFilaProducto);
 
-    // --- GUARDADO MANUAL DEL PEDIDO ---
+    // --- GUARDADO MANUAL DEL PEDIDO NUEVO ---
     const formPedido = document.getElementById('formPedido');
     if (formPedido) {
         formPedido.addEventListener('submit', async function(e) {
@@ -304,12 +288,11 @@ document.addEventListener('DOMContentLoaded', function () {
                 const nombre = fila.querySelector('.input-nombre').value;
                 const precio = fila.querySelector('.input-precio').value;
                 const piezas = fila.querySelector('.input-piezas').value;
-
                 if(!nombre || !precio) errorSKU = true;
                 productosData.push({ sku, nombre, precio: parseFloat(precio), piezas: parseInt(piezas) });
             });
 
-            if(errorSKU) return alert('Hay SKUs no válidos.');
+            if(errorSKU) return alert('Hay SKUs no válidos o no encontrados en la memoria.');
 
             if(typeof window.mostrarCarga === 'function') window.mostrarCarga('Guardando registro...');
 
@@ -333,28 +316,21 @@ document.addEventListener('DOMContentLoaded', function () {
                     body: JSON.stringify(payload)
                 });
                 const res = await response.json();
-
-                if (res.success) {
-                    setTimeout(() => window.location.reload(), 500);
-                } else alert("Error: " + (res.message || "Verifica los datos"));
-            } catch (error) {
-                console.error(error);
-            } finally {
-                if (typeof window.ocultarCarga === 'function') window.ocultarCarga();
-            }
+                if (res.success) setTimeout(() => window.location.reload(), 500);
+                else alert("Error: " + (res.message || "Verifica los datos"));
+            } catch (error) { console.error(error); } 
+            finally { if (typeof window.ocultarCarga === 'function') window.ocultarCarga(); }
         });
     }
 
-    // --- BUSCADOR Y FILTROS DE TABLA CORREGIDOS ---
+    // --- BUSCADOR Y ORDENAMIENTO DE TABLA ---
     const inputBuscador = document.getElementById('inputBuscador');
     const tbodyPedidos = document.querySelector('#tablaPedidos tbody');
 
     if (inputBuscador && tbodyPedidos) {
         inputBuscador.addEventListener('input', function() {
             const termino = this.value.toLowerCase().trim();
-            const filas = document.querySelectorAll('.registro-fila');
-            
-            filas.forEach(fila => {
+            document.querySelectorAll('.registro-fila').forEach(fila => {
                 const numPedido = fila.getAttribute('data-pedido').toLowerCase();
                 fila.style.display = numPedido.includes(termino) ? '' : 'none';
             });
@@ -367,7 +343,6 @@ document.addEventListener('DOMContentLoaded', function () {
             const filas = Array.from(document.querySelectorAll('.registro-fila'));
             const esAsc = header.classList.contains('asc');
             
-            // Iconos UI
             document.querySelectorAll('.th-sort span').forEach(s => s.innerText = 'unfold_more');
             header.querySelector('span').innerText = esAsc ? 'expand_more' : 'expand_less';
 
@@ -378,7 +353,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (['comision', 'venta', 'utilidad'].includes(criterio)) {
                     return esAsc ? parseFloat(valA) - parseFloat(valB) : parseFloat(valB) - parseFloat(valA);
                 }
-                
                 return esAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
             });
 
@@ -387,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // --- ACTUALIZACIÓN DE COMISIONES (MODAL) ---
+    // --- CONFIGURACIÓN DE COMISIONES GLOBALES ---
     const formConfig = document.getElementById('formUpdateComisiones');
     if (formConfig) {
         formConfig.addEventListener('submit', async function(e) {
@@ -409,11 +383,10 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- GRÁFICA PRINCIPAL ---
+    // --- GRÁFICA PRINCIPAL (VISTA GENERAL) ---
     function renderGraficaUtilidad() {
         const ctx = document.getElementById('utilidadChart');
         if (!ctx) return;
-
         const dataRaw = config.graficaData || {};
         const labels = Object.keys(dataRaw).reverse();
         const values = labels.map(k => dataRaw[k].utilidad);
@@ -427,34 +400,143 @@ document.addEventListener('DOMContentLoaded', function () {
                     data: values,
                     backgroundColor: values.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'),
                     borderColor: values.map(v => v >= 0 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)'),
-                    borderWidth: 1,
-                    borderRadius: 4
+                    borderWidth: 1, borderRadius: 4
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => ` $${ctx.raw.toLocaleString('es-MX', {minimumFractionDigits: 2})}`
-                        }
-                    }
+                    tooltip: { callbacks: { label: (ctx) => ` $${ctx.raw.toLocaleString('es-MX', {minimumFractionDigits: 2})}` } }
                 },
                 scales: {
-                    y: {
-                        grid: { color: '#334155' },
-                        ticks: {
-                            color: '#94a3b8',
-                            callback: (val) => `$${val.toLocaleString()}`
-                        }
-                    },
+                    y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: (val) => `$${val.toLocaleString()}` } },
                     x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
                 }
             }
         });
     }
-
     renderGraficaUtilidad();
+
+    // ==========================================
+    // 3. ANÁLISIS FINANCIERO (DASHBOARD MODAL)
+    // ==========================================
+    
+    // Filtros UI del Dashboard
+    const dashFiltroTipo = document.getElementById('dash_filtro_tipo');
+    if (dashFiltroTipo) {
+        dashFiltroTipo.addEventListener('change', function() {
+            document.getElementById('filtro_mes_container').classList.add('hidden');
+            document.getElementById('filtro_dia_container').classList.add('hidden');
+            document.getElementById('filtro_custom_container').classList.add('hidden');
+
+            if (this.value === 'mes') document.getElementById('filtro_mes_container').classList.remove('hidden');
+            if (this.value === 'dia') document.getElementById('filtro_dia_container').classList.remove('hidden');
+            if (this.value === 'custom') document.getElementById('filtro_custom_container').classList.remove('hidden', 'flex');
+        });
+    }
+
+    // Variables globales para destruir gráficas antiguas antes de dibujar nuevas
+    let chartPlataformasInst = null;
+    let chartVentasUtilidadInst = null;
+
+    const btnActualizarDash = document.getElementById('btnActualizarDashboard');
+    if (btnActualizarDash) {
+        btnActualizarDash.addEventListener('click', async function() {
+            const filtro = dashFiltroTipo.value;
+            let queryUrl = `${config.rutas.dashboardData}?filtro=${filtro}`;
+            
+            if (filtro === 'mes') {
+                queryUrl += `&mes=${document.getElementById('dash_mes').value}&anio=${document.getElementById('dash_anio').value}`;
+            } else if (filtro === 'dia') {
+                queryUrl += `&fecha=${document.getElementById('dash_fecha').value}`;
+            } else if (filtro === 'anio') {
+                queryUrl += `&anio=${document.getElementById('dash_anio').value}`; // Aunque uses el mismo select
+            } else if (filtro === 'custom') {
+                queryUrl += `&inicio=${document.getElementById('dash_inicio').value}&fin=${document.getElementById('dash_fin').value}`;
+            }
+
+            const btnOriginalText = this.innerText;
+            this.innerText = 'Generando...';
+            this.disabled = true;
+
+            try {
+                const response = await fetch(queryUrl);
+                const data = await response.json();
+                
+                // 1. Actualizar KPIs con formato Moneda
+                const formatMoney = (val) => `$${parseFloat(val).toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
+                document.getElementById('kpi_ventas').innerText = formatMoney(data.kpis.ventas);
+                document.getElementById('kpi_ganancias').innerText = formatMoney(data.kpis.ganancias);
+                document.getElementById('kpi_perdidas').innerText = formatMoney(data.kpis.perdidas);
+                document.getElementById('kpi_comisiones').innerText = formatMoney(data.kpis.comisiones);
+
+                // 2. Gráfica Doughnut (Plataformas)
+                const ctxPlat = document.getElementById('chartPlataformas');
+                if (ctxPlat) {
+                    if (chartPlataformasInst) chartPlataformasInst.destroy();
+                    const platLabels = Object.keys(data.plataformas);
+                    const platValues = Object.values(data.plataformas);
+                    
+                    chartPlataformasInst = new Chart(ctxPlat.getContext('2d'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: platLabels,
+                            datasets: [{
+                                data: platValues,
+                                backgroundColor: ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'],
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } },
+                                tooltip: { callbacks: { label: (ctx) => ` $${ctx.raw.toLocaleString('es-MX')}` } }
+                            }
+                        }
+                    });
+                }
+
+                // 3. Gráfica de Barras (Venta vs Utilidad)
+                const ctxVentasUt = document.getElementById('chartVentasUtilidad');
+                if (ctxVentasUt) {
+                    if (chartVentasUtilidadInst) chartVentasUtilidadInst.destroy();
+                    const chartData = data.grafica || {};
+                    const dates = Object.keys(chartData);
+                    const dataVentas = dates.map(d => chartData[d].venta);
+                    const dataUtilidad = dates.map(d => chartData[d].utilidad);
+
+                    chartVentasUtilidadInst = new Chart(ctxVentasUt.getContext('2d'), {
+                        type: 'bar',
+                        data: {
+                            labels: dates,
+                            datasets: [
+                                { label: 'Venta Bruta', data: dataVentas, backgroundColor: 'rgba(59, 130, 246, 0.7)' },
+                                { label: 'Utilidad Neta', data: dataUtilidad, backgroundColor: 'rgba(16, 185, 129, 0.8)' }
+                            ]
+                        },
+                        options: {
+                            responsive: true, maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'top', labels: { color: '#94a3b8' } },
+                                tooltip: { callbacks: { label: (ctx) => ` $${ctx.raw.toLocaleString('es-MX', {minimumFractionDigits: 2})}` } }
+                            },
+                            scales: {
+                                y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8', callback: (val) => `$${val.toLocaleString()}` } },
+                                x: { grid: { display: false }, ticks: { color: '#94a3b8' } }
+                            }
+                        }
+                    });
+                }
+
+            } catch (error) {
+                console.error("Error cargando dashboard:", error);
+                alert("Ocurrió un problema al obtener los datos del reporte.");
+            } finally {
+                this.innerText = btnOriginalText;
+                this.disabled = false;
+            }
+        });
+    }
 });

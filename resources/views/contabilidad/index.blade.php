@@ -373,8 +373,9 @@
             procesarLista: "{{ route('contabilidad.procesar-lista') }}",
             guardarPedido: "{{ route('contabilidad.guardar-pedido') }}",
             updateComisiones: "{{ route('contabilidad.actualizar-comisiones') }}",
-            // Agregamos esta ruta (el ID se reemplazará en JS):
-            actualizarPedidoBase: "{{ url('/contabilidad/actualizar-pedido') }}" 
+            actualizarPedidoBase: "{{ url('/contabilidad/actualizar-pedido') }}",
+            // NUEVA RUTA PARA EL DASHBOARD
+            dashboardData: "{{ url('/contabilidad/dashboard-data') }}" 
         },
         graficaData: @json($datosGrafica),
         token: "{{ csrf_token() }}"
