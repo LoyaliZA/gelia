@@ -234,7 +234,7 @@
                             <div class="flex justify-center gap-2 items-center">
                                 <button onclick="verDetallesPedido('{{ $pedido->numero_pedido }}', {{ json_encode($pedido->detalles) }})" class="text-blue-500/50 hover:text-blue-400 material-symbols-outlined text-lg transition-colors" title="Ver Productos">visibility</button>
                                 @if(!$pedido->bloqueado)
-                                <button onclick="abrirModalEdicion({{ $pedido->id }}, '{{ $pedido->numero_pedido }}', '{{ strtolower($pedido->tipo_transaccion) }}', {{ $pedido->platform_id }}, {{ $pedido->venta_total }}, {{ $pedido->costo_envio }}, {{ $pedido->comision_plataforma }})" class="text-yellow-500/50 hover:text-yellow-400 material-symbols-outlined text-lg transition-colors" title="Editar Valores">edit</button>
+                                <button onclick="abrirModalEdicion({{ $pedido->id }}, '{{ $pedido->numero_pedido }}', '{{ strtolower($pedido->tipo_transaccion) }}', {{ $pedido->platform_id }}, {{ $pedido->venta_total }}, {{ $pedido->costo_envio }}, {{ $pedido->comision_plataforma }}, {{ json_encode($pedido->detalles) }})" class="text-yellow-500/50 hover:text-yellow-400 material-symbols-outlined text-lg transition-colors" title="Editar Valores">edit</button>
                                 <button onclick="borrarPedido({{ $pedido->id }})" class="text-red-500/50 hover:text-red-500 material-symbols-outlined text-lg transition-colors" title="Eliminar Registro">delete</button>
                                 @endif
                             </div>
@@ -315,8 +315,7 @@
         </table>
     </div>
 </dialog>
-
-<dialog id="modalEditar" class="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl p-6 backdrop:bg-dark-900/80 w-full max-w-md m-auto">
+<dialog id="modalEditar" class="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl p-6 backdrop:bg-dark-900/80 w-full max-w-lg m-auto">
     <div class="flex justify-between items-center mb-4 border-b border-dark-700 pb-2">
         <h3 class="text-lg font-bold text-white">Corregir Pedido: <span id="edit_num_pedido" class="text-bella-main"></span></h3>
         <button onclick="document.getElementById('modalEditar').close()" class="text-dark-muted hover:text-white material-symbols-outlined transition-colors">close</button>
@@ -341,22 +340,30 @@
                 </select>
             </div>
         </div>
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-3 gap-3">
             <div>
-                <label class="block text-xs text-dark-muted mb-1">Venta Total ($)</label>
+                <label class="block text-xs text-dark-muted mb-1">Venta Total</label>
                 <input type="number" step="0.01" id="edit_venta" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
             </div>
             <div>
-                <label class="block text-xs text-dark-muted mb-1">Costo Envío ($)</label>
+                <label class="block text-xs text-dark-muted mb-1">Costo Envío</label>
                 <input type="number" step="0.01" id="edit_envio" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
             </div>
+            <div>
+                <label class="block text-xs text-bella-main mb-1">Com. Cobrada</label>
+                <input type="number" step="0.01" id="edit_comision" class="w-full bg-dark-900 border border-bella-main/50 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
+            </div>
         </div>
-        <div>
-            <label class="block text-xs text-bella-main mb-1">Comisión Cobrada ($)</label>
-            <input type="number" step="0.01" id="edit_comision" class="w-full bg-dark-900 border border-bella-main/50 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
+        
+        <div class="mt-4 border-t border-dark-700 pt-3">
+            <label class="block text-xs font-bold text-white uppercase mb-2">Ajustar Cantidad de Productos</label>
+            <div id="edit_productos_container" class="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
+                </div>
+            <p class="text-[10px] text-dark-muted mt-1 italic">*El precio unitario original se mantiene y el subtotal se calculará automáticamente.</p>
         </div>
+
         <div class="flex justify-end pt-2">
-            <button type="submit" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-6 rounded transition-colors text-sm">Actualizar</button>
+            <button type="submit" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-6 rounded transition-colors text-sm">Actualizar Registro</button>
         </div>
     </form>
 </dialog>

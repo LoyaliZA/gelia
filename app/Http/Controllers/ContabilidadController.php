@@ -10,6 +10,7 @@ use App\Services\PlatformCalculationService;
 use Rap2hpoutre\FastExcel\FastExcel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ContabilidadController extends Controller
 {
@@ -387,11 +388,11 @@ class ContabilidadController extends Controller
     public function getDashboardData(Request $request)
     {
         $filtro = $request->input('filtro', 'mes');
-        $query = ContabilidadPedido::with('platform');
+        $query = ContabilidadPedido::with(['platform', 'detalles']); // Aseguramos traer detalles
 
         if ($filtro === 'mes') {
             $query->whereMonth('fecha_salida', $request->input('mes', date('m')))
-                ->whereYear('fecha_salida', $request->input('anio', date('Y')));
+                  ->whereYear('fecha_salida', $request->input('anio', date('Y')));
         } elseif ($filtro === 'dia') {
             $query->whereDate('fecha_salida', $request->input('fecha', date('Y-m-d')));
         } elseif ($filtro === 'anio') {
@@ -404,23 +405,32 @@ class ContabilidadController extends Controller
 
         $ventas = $pedidos->sum('venta_total');
         $comisiones = $pedidos->sum('comision_plataforma');
-        // Separación estricta de utilidades
         $ganancias = $pedidos->where('utilidad_total', '>=', 0)->sum('utilidad_total');
         $perdidas = $pedidos->where('utilidad_total', '<', 0)->sum('utilidad_total');
+        $enviosEmpresa = $pedidos->where('envio_pagado_cliente', false)->sum('costo_envio');
+
+        // NUEVOS CÁLCULOS
+        $notasAE = 0;
+        foreach ($pedidos as $p) {
+            foreach ($p->detalles as $d) {
+                $notasAE += ($d->precio_unitario * $d->piezas);
+            }
+        }
+        
+        $margen = $ventas > 0 ? ($pedidos->sum('utilidad_total') / $ventas) * 100 : 0;
+        $enviosClientesCount = $pedidos->where('envio_pagado_cliente', true)->count();
+        $enviosClientesMonto = $pedidos->where('envio_pagado_cliente', true)->sum('costo_envio');
 
         $comisionesPlataforma = $pedidos->groupBy('platform.name')->map->sum('comision_plataforma');
 
         $grafica = $pedidos->groupBy(function ($date) {
             return \Carbon\Carbon::parse($date->fecha_salida)->format('d/m/Y');
         })->map(function ($row) {
-            return [
-                'venta' => $row->sum('venta_total'),
-                'utilidad' => $row->sum('utilidad_total')
-            ];
+            return ['venta' => $row->sum('venta_total'), 'utilidad' => $row->sum('utilidad_total')];
         });
 
         return response()->json([
-            'kpis' => compact('ventas', 'comisiones', 'ganancias', 'perdidas'),
+            'kpis' => compact('ventas', 'comisiones', 'ganancias', 'perdidas', 'enviosEmpresa', 'notasAE', 'margen', 'enviosClientesCount', 'enviosClientesMonto'),
             'plataformas' => $comisionesPlataforma,
             'grafica' => $grafica
         ]);
@@ -464,6 +474,9 @@ class ContabilidadController extends Controller
             'venta_total' => 'required|numeric',
             'costo_envio' => 'required|numeric',
             'comision_plataforma' => 'required|numeric',
+            'productos' => 'required|array', // Nuevo requerimiento
+            'productos.*.id' => 'required|exists:contabilidad_pedido_detalles,id',
+            'productos.*.piezas' => 'required|integer|min:1',
         ]);
 
         try {
@@ -474,20 +487,30 @@ class ContabilidadController extends Controller
                 return response()->json(['success' => false, 'message' => 'El periodo está bloqueado.'], 403);
             }
 
-            // Recalcular el costo total de los productos que ya tiene el pedido
-            $costoProductos = $pedido->detalles->sum('subtotal');
+            $costoProductos = 0.0;
 
-            // Asumimos que si hay costo de envío, lo paga la empresa. Si el usuario lo requiere, 
-            // se puede expandir, pero para edición rápida esto cubre el 90% de los errores tipográficos.
+            // Actualizamos la cantidad de cada producto y recalculamos su subtotal
+            foreach ($request->productos as $prodReq) {
+                $detalle = $pedido->detalles->where('id', $prodReq['id'])->first();
+                if ($detalle) {
+                    $detalle->piezas = $prodReq['piezas'];
+                    // El precio unitario original se mantiene intacto, solo cambia el subtotal
+                    $detalle->subtotal = $detalle->precio_unitario * $prodReq['piezas'];
+                    $detalle->save();
+                    
+                    $costoProductos += $detalle->subtotal;
+                }
+            }
+
             $gastoEnvio = (float) $request->costo_envio;
             $comision = (float) $request->comision_plataforma;
             $venta = (float) $request->venta_total;
             $tipo = strtolower($request->tipo_transaccion);
 
+            // Recálculo de utilidad con el nuevo costo de productos
             if (str_contains($tipo, 'venta')) {
                 $utilidad = $venta - $costoProductos - $gastoEnvio - $comision;
             } else {
-                // Reembolso o contracargo (Pérdida neta)
                 $utilidad = -($costoProductos + $gastoEnvio + $comision);
             }
 
@@ -501,11 +524,101 @@ class ContabilidadController extends Controller
             ]);
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Pedido actualizado.']);
+            return response()->json(['success' => true, 'message' => 'Pedido actualizado correctamente.']);
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error("Error actualizando pedido {$id}: " . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Error al actualizar.'], 500);
+            return response()->json(['success' => false, 'message' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Recibe los datos y gráficas en Base64 para generar el reporte estático.
+     */
+    public function generarReportePDF(Request $request)
+    {
+        $request->validate([
+            'img_plataformas' => 'required|string',
+            'img_ventas' => 'required|string',
+            'periodo' => 'required|string',
+            'filtro' => 'required|string'
+        ]);
+
+        $filtro = $request->input('filtro');
+        $query = ContabilidadPedido::with(['platform', 'detalles']); 
+
+        if ($filtro === 'mes') {
+            $query->whereMonth('fecha_salida', $request->input('mes'))->whereYear('fecha_salida', $request->input('anio'));
+        } elseif ($filtro === 'dia') {
+            $query->whereDate('fecha_salida', $request->input('fecha'));
+        } elseif ($filtro === 'anio') {
+            $query->whereYear('fecha_salida', $request->input('anio'));
+        } elseif ($filtro === 'custom') {
+            $query->whereBetween('fecha_salida', [$request->input('inicio'), $request->input('fin')]);
+        }
+
+        $pedidos = $query->orderBy('fecha_salida', 'desc')->get(); // Traemos de más reciente a antiguo
+
+        // 1. Cálculos de KPIs Nativos para el PDF
+        $kpis = [
+            'ventas' => $pedidos->sum('venta_total'),
+            'ganancias' => $pedidos->where('utilidad_total', '>=', 0)->sum('utilidad_total'),
+            'perdidas' => $pedidos->where('utilidad_total', '<', 0)->sum('utilidad_total'),
+            'comisiones' => $pedidos->sum('comision_plataforma'),
+            'envios_empresa' => $pedidos->where('envio_pagado_cliente', false)->sum('costo_envio'),
+            'envios_clientes_count' => $pedidos->where('envio_pagado_cliente', true)->count(),
+            'envios_clientes_monto' => $pedidos->where('envio_pagado_cliente', true)->sum('costo_envio'),
+            'notas_ae' => 0
+        ];
+
+        foreach ($pedidos as $p) {
+            foreach ($p->detalles as $d) {
+                $kpis['notas_ae'] += ($d->precio_unitario * $d->piezas);
+            }
+        }
+        $kpis['margen'] = $kpis['ventas'] > 0 ? ($pedidos->sum('utilidad_total') / $kpis['ventas']) * 100 : 0;
+
+        // 2. Análisis Avanzado de Plataformas
+        $platStats = [];
+        $totalComisiones = $kpis['comisiones'];
+        
+        foreach($pedidos->groupBy('platform.name') as $nombre => $grupo) {
+            $comisionPlataforma = $grupo->sum('comision_plataforma');
+            $cantidad = $grupo->count();
+            $platStats[$nombre] = [
+                'comision' => $comisionPlataforma,
+                'cantidad' => $cantidad,
+                'porcentaje' => $totalComisiones > 0 ? ($comisionPlataforma / $totalComisiones) * 100 : 0,
+                'promedio' => $cantidad > 0 ? ($comisionPlataforma / $cantidad) : 0,
+            ];
+        }
+
+        $platInsights = [
+            'mas_usada' => collect($platStats)->sortByDesc('cantidad')->keys()->first() ?? 'N/A',
+            'mas_cara' => collect($platStats)->sortByDesc('promedio')->keys()->first() ?? 'N/A',
+            'menos_relevante' => collect($platStats)->sortBy('cantidad')->keys()->first() ?? 'N/A'
+        ];
+
+        // 3. Ordenamiento Estratégico: Contracargos y Reembolsos primero
+        $anomalias = $pedidos->filter(fn($p) => !str_contains(strtolower($p->tipo_transaccion), 'venta'));
+        $ventasNorm = $pedidos->filter(fn($p) => str_contains(strtolower($p->tipo_transaccion), 'venta'));
+        $pedidosOrdenados = $anomalias->merge($ventasNorm);
+
+        $data = [
+            'fechaImpresion' => date('d/m/Y'),
+            'periodo' => $request->periodo,
+            'kpis' => $kpis,
+            'platStats' => $platStats,
+            'platInsights' => $platInsights,
+            'imgPlataformas' => $request->img_plataformas,
+            'imgVentas' => $request->img_ventas,
+            'pedidos' => $pedidosOrdenados,
+            'logoBellaroma' => base64_encode(file_get_contents(public_path('assets/BELLAROMA-LOGOTIPO-04.png')))
+        ];
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('contabilidad.partials.reporte_pdf', $data);
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->download('Reporte_Bellaroma_'.$request->periodo.'.pdf');
     }
 }

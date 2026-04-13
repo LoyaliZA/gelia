@@ -154,4 +154,5 @@ Route::prefix('contabilidad')->middleware('auth')->group(function () {
     Route::get('/exportar-reporte', [ContabilidadController::class, 'exportarReporte'])->name('contabilidad.exportar-reporte');
     // Dashboard Avanzado API
     Route::get('/dashboard-data', [\App\Http\Controllers\ContabilidadController::class, 'getDashboardData'])->name('contabilidad.dashboard-data');
+    Route::post('/generar-pdf', [ContabilidadController::class, 'generarReportePDF'])->name('contabilidad.generar-pdf');
 });
