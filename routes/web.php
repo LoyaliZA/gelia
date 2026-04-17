@@ -155,4 +155,7 @@ Route::prefix('contabilidad')->middleware('auth')->group(function () {
     // Dashboard Avanzado API
     Route::get('/dashboard-data', [\App\Http\Controllers\ContabilidadController::class, 'getDashboardData'])->name('contabilidad.dashboard-data');
     Route::post('/generar-pdf', [ContabilidadController::class, 'generarReportePDF'])->name('contabilidad.generar-pdf');
+    // Módulo de Retiros y Facturación
+Route::get('/retiros', [ContabilidadController::class, 'gestionRetiros'])->name('contabilidad.retiros');
+Route::post('/confirmar-lote', [ContabilidadController::class, 'confirmarLote'])->name('contabilidad.confirmar-lote');
 });

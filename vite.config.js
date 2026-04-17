@@ -17,7 +17,9 @@ export default defineConfig({
                 'resources/js/aromas/listados.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/aromas/avisos.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/contabilidad.js', // <-- NUEVO SCRIPT COMPILABLE
+                'resources/js/contabilidad/retiros.js', // <-- NUEVO SCRIPT COMPILABLE
                 'resources/js/woocommerce.js', // <-- NUEVO SCRIPT COMPILABLE PARA PROCESAR CSV DE WOOCOMMERCE
+
             ],
             refresh: true,
         }),

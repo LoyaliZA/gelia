@@ -75,24 +75,26 @@ class ContabilidadController extends Controller
 
         $nombreArchivo = "Reporte_Contabilidad_Bellaroma_{$mes}_{$anio}.xlsx";
 
-        // Mapeamos los datos para que el Excel salga limpio y legible
-        $datosGenerador = function () use ($pedidos) {
-            foreach ($pedidos as $pedido) {
-                yield [
-                    'Fecha' => $pedido->fecha_salida->format('Y-m-d'),
-                    'Pedido' => $pedido->numero_pedido,
-                    'Plataforma' => $pedido->platform->name,
-                    'Venta Total ($)' => $pedido->venta_total,
-                    'Costo Envío ($)' => $pedido->costo_envio,
-                    'Comisión ($)' => $pedido->comision_plataforma,
-                    'Utilidad Neta ($)' => $pedido->utilidad_total,
-                    'Total SKUs' => $pedido->detalles->count(),
-                    'Piezas Vendidas' => $pedido->detalles->sum('piezas'),
-                ];
-            }
-        };
+        // CORRECCIÓN: Mapeamos la colección directamente en lugar de usar un Generador (yield)
+        $datos = $pedidos->map(function ($pedido) {
+            return [
+                'Fecha' => $pedido->fecha_salida->format('Y-m-d'),
+                'Pedido' => $pedido->numero_pedido,
+                'Cliente' => $pedido->cliente_nombre ?? 'Sin Nombre',
+                'Plataforma' => $pedido->platform->name,
+                'Transacción' => ucfirst($pedido->tipo_transaccion),
+                'Venta Total ($)' => $pedido->venta_total,
+                'Costo Envío ($)' => $pedido->costo_envio,
+                'Comisión Plataforma ($)' => $pedido->comision_plataforma,
+                'Comisión Retiro Banco ($)' => $pedido->comision_transferencia,
+                'Utilidad Final Neta ($)' => $pedido->utilidad_total,
+                'Estatus Pago' => strtoupper($pedido->estatus_pago),
+                'Total SKUs' => $pedido->detalles->count(),
+                'Piezas Vendidas' => $pedido->detalles->sum('piezas'),
+            ];
+        });
 
-        return (new FastExcel($datosGenerador()))->download($nombreArchivo);
+        return (new \Rap2hpoutre\FastExcel\FastExcel($datos))->download($nombreArchivo);
     }
 
     public function procesarLista(Request $request)
@@ -131,6 +133,7 @@ class ContabilidadController extends Controller
         $request->validate([
             'fecha_salida' => 'required|date',
             'numero_pedido' => 'required|string',
+            'cliente_nombre' => 'nullable|string', // <-- CAMBIO AQUÍ
             'platform_id' => 'required|exists:platforms,id',
             'venta_total' => 'required|numeric',
             'costo_envio' => 'required|numeric',
@@ -179,6 +182,7 @@ class ContabilidadController extends Controller
             $pedido = ContabilidadPedido::create([
                 'fecha_salida' => $request->fecha_salida,
                 'numero_pedido' => $request->numero_pedido,
+                'cliente_nombre' => $request->cliente_nombre,
                 'tipo_transaccion' => $tipoTransaccion,
                 'platform_id' => $request->platform_id,
                 'venta_total' => $ventaTotal,
@@ -297,6 +301,7 @@ class ContabilidadController extends Controller
 
                     $pedidosAgrupados[$numPedido] = [
                         'fecha' => $fechaFinal,
+                        'cliente_nombre' => trim((string)($linea['Cliente'] ?? $linea['Nombre del Cliente'] ?? '')),
                         'tipo_transaccion' => strtolower(trim((string)($linea['Tipo_Transaccion'] ?? 'venta'))),
                         'plataforma' => trim((string)$linea['Plataforma'] ?? ''),
                         'venta_total' => $limpiarNumero($linea['Venta_Total'] ?? 0),
@@ -346,6 +351,7 @@ class ContabilidadController extends Controller
                     ['numero_pedido' => $numPedido],
                     [
                         'fecha_salida' => $data['fecha'],
+                        'cliente_nombre' => $data['cliente_nombre'],
                         'tipo_transaccion' => $data['tipo_transaccion'],
                         'platform_id' => $platform_id,
                         'venta_total' => $data['venta_total'],
@@ -468,13 +474,15 @@ class ContabilidadController extends Controller
      */
     public function actualizarPedidoRapido(Request $request, $id)
     {
+        // 1. AÑADIMOS EL CLIENTE A LAS REGLAS DE VALIDACIÓN
         $request->validate([
             'tipo_transaccion' => 'required|string',
             'platform_id' => 'required|exists:platforms,id',
             'venta_total' => 'required|numeric',
             'costo_envio' => 'required|numeric',
             'comision_plataforma' => 'required|numeric',
-            'productos' => 'required|array', // Nuevo requerimiento
+            'cliente_nombre' => 'nullable|string', // <-- Nuevo campo permitido
+            'productos' => 'required|array', 
             'productos.*.id' => 'required|exists:contabilidad_pedido_detalles,id',
             'productos.*.piezas' => 'required|integer|min:1',
         ]);
@@ -514,9 +522,11 @@ class ContabilidadController extends Controller
                 $utilidad = -($costoProductos + $gastoEnvio + $comision);
             }
 
+            // 2. INYECTAMOS EL NOMBRE DEL CLIENTE AL MOMENTO DE GUARDAR
             $pedido->update([
                 'tipo_transaccion' => $tipo,
                 'platform_id' => $request->platform_id,
+                'cliente_nombre' => $request->cliente_nombre, // <-- Guardado en BD
                 'venta_total' => $venta,
                 'costo_envio' => $gastoEnvio,
                 'comision_plataforma' => $comision,
@@ -531,7 +541,6 @@ class ContabilidadController extends Controller
             return response()->json(['success' => false, 'message' => 'Error al actualizar: ' . $e->getMessage()], 500);
         }
     }
-
     /**
      * Recibe los datos y gráficas en Base64 para generar el reporte estático.
      */
@@ -620,5 +629,202 @@ class ContabilidadController extends Controller
         $pdf->setPaper('A4', 'portrait');
 
         return $pdf->download('Reporte_Bellaroma_'.$request->periodo.'.pdf');
+    }
+
+    /**
+     * Vista principal del Control de Retiros Inteligente (Agrupado por periodos)
+     */
+    public function gestionRetiros()
+    {
+        $platforms = Platform::where('active', true)->get();
+        $pedidosPendientes = ContabilidadPedido::with('detalles', 'platform')
+            ->where('estatus_pago', 'pendiente')
+            ->orderBy('fecha_salida', 'asc')
+            ->get();
+
+        $datosPlataformas = [];
+        
+        foreach ($platforms as $plat) {
+            $pedidos = $pedidosPendientes->where('platform_id', $plat->id)->values();
+            $frecuencia = strtolower($plat->frecuencia_pago);
+            
+            // AGRUPACIÓN INTELIGENTE VIRTUAL
+            $grupos = $pedidos->groupBy(function($pedido) use ($frecuencia) {
+                $fecha = \Carbon\Carbon::parse($pedido->fecha_salida);
+                
+                if ($frecuencia == 'semanal') {
+                    return 'Semana del ' . $fecha->copy()->startOfWeek()->format('d/m/Y') . ' al ' . $fecha->copy()->endOfWeek()->format('d/m/Y');
+                } elseif ($frecuencia == 'quincenal') {
+                    if ($fecha->day <= 15) return 'Quincena 01/' . $fecha->format('m/Y') . ' al 15/' . $fecha->format('m/Y');
+                    return 'Quincena 16/' . $fecha->format('m/Y') . ' al ' . $fecha->endOfMonth()->format('d/m/Y');
+                } elseif ($frecuencia == 'diario' || $frecuencia == 'inmediato') {
+                    return 'Día ' . $fecha->format('d/m/Y');
+                }
+                
+                // Personalizado o fallback
+                return 'Periodo ' . $fecha->format('F Y');
+            });
+
+            // Ordenamos los grupos para que los más antiguos salgan primero
+            $grupos = $grupos->sortKeys();
+
+            $datosPlataformas[] = [
+                'plataforma' => $plat,
+                'grupos' => $grupos,
+                'total_pendientes' => $pedidos->count()
+            ];
+        }
+
+        return view('contabilidad.retiros', compact('datosPlataformas'));
+    }
+
+    /**
+     * Procesa la confirmación de un lote completo (Con montos individuales)
+     */
+    public function confirmarLote(Request $request)
+    {
+        $request->validate([
+            'platform_id' => 'required|exists:platforms,id',
+            'pedidos' => 'required|array',
+            'pedidos.*.id' => 'required|exists:contabilidad_pedidos,id',
+            'pedidos.*.monto_real' => 'required|numeric', // Ahora exigimos el monto por cada pedido
+            'fecha_deposito' => 'required|date'
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $pedidosIds = collect($request->pedidos)->pluck('id');
+            $pedidosBD = ContabilidadPedido::whereIn('id', $pedidosIds)->get()->keyBy('id');
+
+            $ventasTotal = 0;
+            $comisionesTotal = 0;
+            $montoEsperadoTotal = 0;
+            $montoRealTotal = 0;
+            
+            $pedidosAActualizar = [];
+
+            foreach ($request->pedidos as $reqPedido) {
+                $pedido = $pedidosBD[$reqPedido['id']];
+                $montoReal = (float) $reqPedido['monto_real'];
+
+                $ventasTotal += $pedido->venta_total;
+                $comisionesTotal += $pedido->comision_plataforma;
+                
+                $montoEsperado = 0;
+                if(str_contains(strtolower($pedido->tipo_transaccion), 'venta')) {
+                    $montoEsperado = $pedido->venta_total - $pedido->comision_plataforma;
+                } else {
+                    $montoEsperado = -abs($pedido->venta_total + $pedido->comision_plataforma);
+                }
+
+                $montoEsperadoTotal += $montoEsperado;
+                $montoRealTotal += $montoReal;
+
+                // Calculamos la discrepancia individual
+                $diferencia = $montoEsperado - $montoReal;
+                $comisionTransferencia = $diferencia > 0 ? $diferencia : 0;
+                $nuevaUtilidad = $pedido->utilidad_total - $comisionTransferencia;
+
+                // Lo guardamos en memoria para actualizarlo después de crear el lote
+                $pedidosAActualizar[] = [
+                    'model' => $pedido,
+                    'comision_trans' => $comisionTransferencia,
+                    'nueva_utilidad' => $nuevaUtilidad
+                ];
+            }
+
+            // 1. Creamos el Lote agrupador
+            $lote = \App\Models\LotePago::create([
+                'platform_id' => $request->platform_id,
+                'fecha_corte_esperada' => \Carbon\Carbon::now(),
+                'fecha_deposito_real' => $request->fecha_deposito,
+                'monto_ventas_total' => $ventasTotal,
+                'comisiones_plataforma_total' => $comisionesTotal,
+                'monto_esperado_banco' => $montoEsperadoTotal,
+                'monto_real_banco' => $montoRealTotal,
+                'estatus' => 'completado'
+            ]);
+
+            // 2. Actualizamos los pedidos con su comisión específica
+            foreach ($pedidosAActualizar as $data) {
+                $data['model']->update([
+                    'estatus_pago' => 'transferido',
+                    'lote_pago_id' => $lote->id,
+                    'fecha_retiro' => $request->fecha_deposito,
+                    'comision_transferencia' => $data['comision_trans'],
+                    'utilidad_total' => $data['nueva_utilidad']
+                ]);
+            }
+
+            Platform::where('id', $request->platform_id)->update(['ultimo_corte' => $request->fecha_deposito]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Retiros confirmados y desglosados correctamente.']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Confirmación Rápida Individual (Con modificación de Monto Real)
+     */
+    public function confirmarIndividual(Request $request, $id)
+    {
+        $request->validate([
+            'monto_real_banco' => 'required|numeric',
+            'fecha_deposito' => 'required|date'
+        ]);
+
+        try {
+            DB::beginTransaction();
+            $pedido = ContabilidadPedido::findOrFail($id);
+
+            // 1. Calcular el monto que esperábamos que llegara de la plataforma
+            $montoEsperado = 0;
+            if(str_contains(strtolower($pedido->tipo_transaccion), 'venta')) {
+                $montoEsperado = $pedido->venta_total - $pedido->comision_plataforma;
+            } else {
+                $montoEsperado = -abs($pedido->venta_total + $pedido->comision_plataforma);
+            }
+
+            // 2. Calcular diferencia (Comisión del banco por transferir)
+            $montoReal = (float) $request->monto_real_banco;
+            $diferencia = $montoEsperado - $montoReal;
+            
+            $comisionTransferencia = $diferencia > 0 ? $diferencia : 0;
+            
+            // 3. Restar esa comisión bancaria de la Utilidad Neta final
+            $nuevaUtilidad = $pedido->utilidad_total - $comisionTransferencia;
+
+            // 4. Crear el Lote y Actualizar
+            $lote = \App\Models\LotePago::create([
+                'platform_id' => $pedido->platform_id,
+                'fecha_corte_esperada' => \Carbon\Carbon::now(),
+                'fecha_deposito_real' => $request->fecha_deposito,
+                'monto_ventas_total' => $pedido->venta_total,
+                'comisiones_plataforma_total' => $pedido->comision_plataforma,
+                'monto_esperado_banco' => $montoEsperado,
+                'monto_real_banco' => $montoReal,
+                'estatus' => 'completado'
+            ]);
+
+            $pedido->update([
+                'estatus_pago' => 'transferido',
+                'lote_pago_id' => $lote->id,
+                'fecha_retiro' => $request->fecha_deposito,
+                'comision_transferencia' => $comisionTransferencia,
+                'utilidad_total' => $nuevaUtilidad
+            ]);
+
+            Platform::where('id', $pedido->platform_id)->update(['ultimo_corte' => $request->fecha_deposito]);
+
+            DB::commit();
+            return response()->json(['success' => true, 'message' => 'Pago confirmado.']);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 }

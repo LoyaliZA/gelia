@@ -50,9 +50,12 @@ window.verDetallesPedido = function (numPedido, detalles) {
 };
 
 // Actualizamos la función para recibir y renderizar los productos
-window.abrirModalEdicion = function (id, numPedido, tipo, platformId, venta, envio, comision, detalles) {
+window.abrirModalEdicion = function (id, numPedido, tipo, platformId, venta, envio, comision, clienteNombre, detalles) {
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_num_pedido').innerText = numPedido;
+
+    const inputCliente = document.getElementById('edit_cliente');
+    if (inputCliente) inputCliente.value = clienteNombre !== 'null' ? clienteNombre : '';
 
     let tipoNormalizado = 'venta';
     if (tipo.includes('reembolso')) tipoNormalizado = 'reembolso';
@@ -134,6 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 venta_total: document.getElementById('edit_venta').value,
                 costo_envio: document.getElementById('edit_envio').value,
                 comision_plataforma: document.getElementById('edit_comision').value,
+                cliente_nombre: document.getElementById('edit_cliente').value,
                 productos: productosEditados // Enviamos el array al backend
             };
 
@@ -332,10 +336,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
             if (typeof window.mostrarCarga === 'function') window.mostrarCarga('Guardando registro...');
 
+            // AÑADIMOS EL CLIENTE_NOMBRE AL PAYLOAD
             const payload = {
                 _token: config.token,
                 fecha_salida: document.getElementById('fecha_salida').value,
                 numero_pedido: document.getElementById('numero_pedido').value,
+                cliente_nombre: document.getElementById('cliente_nombre').value, // <-- CAMBIO AQUÍ
                 tipo_transaccion: document.getElementById('tipo_transaccion').value,
                 platform_id: document.getElementById('platform_id').value,
                 venta_total: parseFloat(limpiarMoneda(document.getElementById('venta_total').value)) || 0,
@@ -359,7 +365,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // --- BUSCADOR Y ORDENAMIENTO DE TABLA ---
+    /// --- BUSCADOR Y ORDENAMIENTO DE TABLA ---
     const inputBuscador = document.getElementById('inputBuscador');
     const tbodyPedidos = document.querySelector('#tablaPedidos tbody');
 
@@ -367,8 +373,16 @@ document.addEventListener('DOMContentLoaded', function () {
         inputBuscador.addEventListener('input', function () {
             const termino = this.value.toLowerCase().trim();
             document.querySelectorAll('.registro-fila').forEach(fila => {
-                const numPedido = fila.getAttribute('data-pedido').toLowerCase();
-                fila.style.display = numPedido.includes(termino) ? '' : 'none';
+                // Ahora buscamos en Pedido, Cliente Y Tipo de Transacción
+                const numPedido = (fila.getAttribute('data-pedido') || '').toLowerCase();
+                const cliente = (fila.getAttribute('data-cliente') || '').toLowerCase();
+                const tipo = (fila.getAttribute('data-tipo') || '').toLowerCase(); // <-- NUEVO
+
+                if (numPedido.includes(termino) || cliente.includes(termino) || tipo.includes(termino)) {
+                    fila.style.display = '';
+                } else {
+                    fila.style.display = 'none';
+                }
             });
         });
     }
@@ -379,14 +393,15 @@ document.addEventListener('DOMContentLoaded', function () {
             const filas = Array.from(document.querySelectorAll('.registro-fila'));
             const esAsc = header.classList.contains('asc');
 
-            document.querySelectorAll('.th-sort span').forEach(s => s.innerText = 'unfold_more');
-            header.querySelector('span').innerText = esAsc ? 'expand_more' : 'expand_less';
+            document.querySelectorAll('.th-sort span').forEach(s => { if (s.innerText !== 'info') s.innerText = 'unfold_more'; });
+            const icon = header.querySelector('span');
+            if (icon && icon.innerText !== 'info') icon.innerText = esAsc ? 'expand_more' : 'expand_less';
 
             filas.sort((a, b) => {
                 let valA = a.getAttribute(`data-${criterio}`);
                 let valB = b.getAttribute(`data-${criterio}`);
 
-                if (['comision', 'venta', 'utilidad'].includes(criterio)) {
+                if (['venta', 'preretiro', 'neta'].includes(criterio)) {
                     return esAsc ? parseFloat(valA) - parseFloat(valB) : parseFloat(valB) - parseFloat(valA);
                 }
                 return esAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
@@ -396,6 +411,53 @@ document.addEventListener('DOMContentLoaded', function () {
             filas.forEach(fila => tbodyPedidos.appendChild(fila));
         });
     });
+
+    // --- LÓGICA DEL NUEVO MODAL DE CONFIRMACIÓN INDIVIDUAL ---
+    window.abrirModalConfirmarRetiro = function (id, numPedido, montoEsperado) {
+        document.getElementById('conf_id').value = id;
+        document.getElementById('conf_num_pedido').innerText = numPedido;
+        document.getElementById('conf_esperado').innerText = '$' + parseFloat(montoEsperado).toFixed(2);
+        document.getElementById('conf_monto').value = parseFloat(montoEsperado).toFixed(2); // Auto-llenado
+
+        document.getElementById('modalConfirmarRetiro').showModal();
+    };
+
+    const formConfirmarRetiro = document.getElementById('formConfirmarRetiro');
+    if (formConfirmarRetiro) {
+        formConfirmarRetiro.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            const id = document.getElementById('conf_id').value;
+            const btn = document.getElementById('btnConfIndividual');
+
+            btn.disabled = true;
+            btn.innerText = 'Procesando...';
+
+            try {
+                // Hacemos la petición al endpoint individual que creamos
+                const response = await fetch(`/contabilidad/confirmar-individual/${id}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': window.ContabilidadConfig.token },
+                    body: JSON.stringify({
+                        monto_real_banco: document.getElementById('conf_monto').value,
+                        fecha_deposito: document.getElementById('conf_fecha').value
+                    })
+                });
+
+                const res = await response.json();
+                if (res.success) {
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + res.message);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Fallo de conexión.');
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Guardar y Transferir a Neta';
+            }
+        });
+    }
 
     // --- CONFIGURACIÓN DE COMISIONES GLOBALES ---
     const formConfig = document.getElementById('formUpdateComisiones');
@@ -502,13 +564,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // (Dentro del evento click de btnActualizarDashboard)
                 // 1. Actualizar KPIs Web
-                const formatMoney = (val) => `$${parseFloat(val).toLocaleString('es-MX', {minimumFractionDigits: 2})}`;
-                
+                const formatMoney = (val) => `$${parseFloat(val).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+
                 document.getElementById('kpi_ventas').innerText = formatMoney(data.kpis.ventas);
                 document.getElementById('kpi_notas_ae').innerText = formatMoney(data.kpis.notasAE);
                 document.getElementById('kpi_ganancias').innerText = formatMoney(data.kpis.ganancias);
                 document.getElementById('kpi_margen').innerText = parseFloat(data.kpis.margen).toFixed(2) + '%';
-                
+
                 document.getElementById('kpi_perdidas').innerText = formatMoney(data.kpis.perdidas);
                 document.getElementById('kpi_comisiones').innerText = formatMoney(data.kpis.comisiones);
                 document.getElementById('kpi_envios_empresa').innerText = formatMoney(data.kpis.enviosEmpresa);
@@ -674,3 +736,61 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+    // ==========================================
+    // 4. LÓGICA DE MENÚS DE ACCIÓN (TRES PUNTITOS FLOTANTES)
+    // ==========================================
+    document.addEventListener('click', function(e) {
+        const isMenuBtn = e.target.closest('.btn-action-menu');
+        const isDropdown = e.target.closest('.action-dropdown');
+        
+        // 1. Cerrar todos los menús si hacemos clic afuera
+        if (!isMenuBtn && !isDropdown) {
+            document.querySelectorAll('.action-dropdown').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+        }
+
+        // 2. Alternar el menú actual y calcular su posición flotante
+        if (isMenuBtn) {
+            e.preventDefault();
+            e.stopPropagation(); // Evita que otros eventos interfieran
+
+            const dropdown = isMenuBtn.nextElementSibling;
+            const isHidden = dropdown.classList.contains('hidden');
+
+            // Cerramos cualquier otro menú que esté abierto
+            document.querySelectorAll('.action-dropdown').forEach(m => m.classList.add('hidden'));
+
+            if (isHidden) {
+                // Obtenemos las coordenadas exactas del botón en la pantalla
+                const rect = isMenuBtn.getBoundingClientRect();
+                
+                // Quitamos el hidden temporalmente para que el navegador calcule su altura
+                dropdown.classList.remove('hidden');
+                
+                const dropdownHeight = dropdown.offsetHeight;
+                const dropdownWidth = 192; // Ancho aproximado de la clase w-48
+                
+                // Posicionamos a la izquierda del botón
+                let topPos = rect.top;
+                let leftPos = rect.left - dropdownWidth - 8; // 8px de margen de respiro
+
+                // Anti-corte: Si el menú choca con el borde inferior de la pantalla, lo dibujamos hacia arriba
+                if (topPos + dropdownHeight > window.innerHeight) {
+                    topPos = rect.bottom - dropdownHeight;
+                }
+
+                // Aplicamos las coordenadas en píxeles exactos
+                dropdown.style.top = `${topPos}px`;
+                dropdown.style.left = `${leftPos}px`;
+            }
+        }
+    });
+
+    // 3. Cerrar los menús flotantes automáticamente si el usuario hace scroll en la tabla
+    window.addEventListener('scroll', function() {
+        document.querySelectorAll('.action-dropdown:not(.hidden)').forEach(menu => {
+            menu.classList.add('hidden');
+        });
+    }, true); // El 'true' captura los eventos de scroll internos de la tabla

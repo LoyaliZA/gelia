@@ -112,6 +112,10 @@
                         <input type="text" id="numero_pedido" required placeholder="Ej: 28098" class="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:ring-1 focus:ring-bella-main uppercase">
                     </div>
                     <div>
+                        <label class="block text-[10px] uppercase font-bold text-dark-muted mb-1">Nombre del Cliente</label>
+                        <input type="text" id="cliente_nombre" placeholder="Ej: Jair Treviño" class="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:ring-1 focus:ring-bella-main">
+                    </div>
+                    <div>
                         <label class="block text-[10px] uppercase font-bold text-dark-muted mb-1">Transacción</label>
                         <select id="tipo_transaccion" class="w-full bg-dark-900 border border-dark-700 rounded-lg px-3 py-1.5 text-white text-sm outline-none focus:ring-1 focus:ring-bella-main">
                             <option value="venta">Venta Normal</option>
@@ -163,7 +167,7 @@
                 <div class="mt-4 pt-4 border-t border-dark-700">
                     <div class="flex justify-between items-center mb-3">
                         <h3 class="text-sm font-bold text-white uppercase tracking-tighter">Productos Incluidos</h3>
-                        <button type="button" id="btnAgregarProducto" class="text-xs bg-dark-700 hover:bg-dark-600 text-white px-3 py-1.5 rounded border border-dark-600 transition-colors uppercase">+ Agregar SKU</button>
+                        <button type="button" id="btnAgregarProducto" class="text-xs bg-dark-700 hover:bg-dark-600 text-white px-3 py-1.5 rounded border border-dark-600 transition-colors uppercase">+ Agregar Producto</button>
                     </div>
                     <div id="contenedor_productos" class="space-y-2 max-h-[250px] overflow-y-auto custom-scrollbar pr-2"></div>
                 </div>
@@ -190,60 +194,120 @@
             <table class="w-full text-left border-collapse whitespace-nowrap" id="tablaPedidos">
                 <thead class="sticky top-0 bg-dark-900 shadow-sm z-10">
                     <tr class="text-dark-muted text-[11px] uppercase tracking-widest select-none">
-                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="fecha">Fecha <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span></th>
-                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="plataforma">Plataforma <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span></th>
-                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="pedido">Pedido <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span></th>
-                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="tipo">Tipo <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span></th>
-                        <th class="p-4 font-bold text-right cursor-pointer hover:text-white transition-colors th-sort" data-sort="comision">Comisión <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span></th>
-                        <th class="p-4 font-bold text-right cursor-pointer hover:text-white transition-colors th-sort" data-sort="venta">Venta <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span></th>
-                        <th class="p-4 font-bold text-right cursor-pointer hover:text-white transition-colors th-sort" data-sort="utilidad">Utilidad <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span></th>
+                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="fecha">
+                            Fecha <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
+                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="plataforma">
+                            Plataforma <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
+                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="pedido">
+                            Pedido <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
+                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="tipo">
+                            Tipo <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
+                        <th class="p-4 font-bold cursor-pointer hover:text-white transition-colors th-sort" data-sort="cliente">
+                            Cliente <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
+                        <th class="p-4 font-bold text-right cursor-pointer hover:text-white transition-colors th-sort" data-sort="venta">
+                            Venta <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
+                        <th class="p-4 font-bold text-right cursor-pointer hover:text-white transition-colors th-sort" data-sort="preretiro">
+                            Utilidad Pre-Retiro <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
+                        <th class="p-4 font-bold text-right cursor-pointer hover:text-white transition-colors th-sort" data-sort="neta">
+                            Utilidad Neta <span class="material-symbols-outlined text-[14px] align-middle ml-1">unfold_more</span>
+                        </th>
                         <th class="p-4 text-center">Acción</th>
                     </tr>
                 </thead>
                 <tbody class="text-sm divide-y divide-dark-700">
                     @forelse($pedidos as $pedido)
+                    @php
+                        $tipo = strtolower($pedido->tipo_transaccion);
+                        $esVenta = str_contains($tipo, 'venta');
+                        $esReem = str_contains($tipo, 'reembolso');
+                        // COLORES: Verde para venta, Amarillo para reembolso, Rojo contracargo
+                        $badgeCls = $esVenta ? 'bg-green-500/20 text-green-400 border border-green-500/30' : ($esReem ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 'bg-red-500/20 text-red-500 border border-red-500/30');
+                        $textoTipo = $esVenta ? 'Venta Normal' : $pedido->tipo_transaccion;
+                        
+                        $utilidadPreRetiro = $pedido->utilidad_total + $pedido->comision_transferencia;
+                        $esTransferido = $pedido->estatus_pago === 'transferido';
+                        $retiroEsperado = $esVenta ? ($pedido->venta_total - $pedido->comision_plataforma) : -abs($pedido->venta_total + $pedido->comision_plataforma);
+                    @endphp
                     <tr class="hover:bg-dark-700/50 transition-colors registro-fila"
                         data-fecha="{{ $pedido->fecha_salida->format('Y-m-d') }}"
                         data-plataforma="{{ $pedido->platform->name }}"
                         data-pedido="{{ $pedido->numero_pedido }}"
-                        data-tipo="{{ $pedido->tipo_transaccion }}"
-                        data-comision="{{ $pedido->comision_plataforma }}"
+                        data-cliente="{{ strtolower($pedido->cliente_nombre ?? '') }}"
+                        data-tipo="{{ strtolower($pedido->tipo_transaccion) }}"
                         data-venta="{{ $pedido->venta_total }}"
-                        data-utilidad="{{ $pedido->utilidad_total }}">
+                        data-preretiro="{{ $utilidadPreRetiro }}"
+                        data-neta="{{ $pedido->utilidad_total }}">
 
                         <td class="p-4 text-white">{{ $pedido->fecha_salida->format('d/m/Y') }}</td>
                         <td class="p-4 text-dark-muted">{{ $pedido->platform->name }}</td>
-                        <td class="p-4 font-semibold text-bella-main">{{ $pedido->numero_pedido }}</td>
+                        
+                        <td class="p-4 font-bold text-white tracking-wide">
+                            {{ $pedido->numero_pedido }}
+                        </td>
+                        
                         <td class="p-4">
-                            @php
-                            $esVenta = str_contains(strtolower($pedido->tipo_transaccion), 'venta');
-                            $esReembolso = str_contains(strtolower($pedido->tipo_transaccion), 'reembolso');
-                            $badgeBg = $esVenta ? 'bg-green-500/10 text-green-400' : ($esReembolso ? 'bg-yellow-500/10 text-yellow-500' : 'bg-red-500/10 text-red-500');
-                            $badgeText = $esVenta ? 'Venta Normal' : $pedido->tipo_transaccion;
-                            @endphp
-                            <span class="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider {{ $badgeBg }}">
-                                {{ $badgeText }}
+                            <span class="text-[9px] px-2 py-1 rounded uppercase font-bold {{ $badgeCls }} tracking-wider shadow-sm">
+                                {{ $textoTipo }}
                             </span>
                         </td>
-                        <td class="p-4 text-right text-dark-muted">${{ number_format($pedido->comision_plataforma, 2) }}</td>
+
+                        <td class="p-4 text-white truncate max-w-[150px]" title="{{ $pedido->cliente_nombre }}">{{ $pedido->cliente_nombre ?? 'Sin Nombre' }}</td>
+
                         <td class="p-4 text-right text-white font-medium">${{ number_format($pedido->venta_total, 2) }}</td>
-                        <td class="p-4 text-right font-bold {{ $pedido->utilidad_total >= 0 ? 'text-green-500' : 'text-red-500' }}">
-                            ${{ number_format($pedido->utilidad_total, 2) }}
+
+                        <td class="p-4 text-right font-bold {{ $esTransferido ? 'text-dark-muted' : 'text-yellow-500' }}">
+                            ${{ number_format($utilidadPreRetiro, 2) }}
                         </td>
+
+                        <td class="p-4 text-right font-bold {{ $esTransferido ? ($pedido->utilidad_total >= 0 ? 'text-green-500' : 'text-red-500') : 'text-dark-muted' }}">
+                            @if($esTransferido)
+                                ${{ number_format($pedido->utilidad_total, 2) }}
+                            @else
+                                <span class="opacity-30">---</span>
+                            @endif
+                        </td>
+
                         <td class="p-4 text-center">
-                            <div class="flex justify-center gap-2 items-center">
-                                <button onclick="verDetallesPedido('{{ $pedido->numero_pedido }}', {{ json_encode($pedido->detalles) }})" class="text-blue-500/50 hover:text-blue-400 material-symbols-outlined text-lg transition-colors" title="Ver Productos">visibility</button>
-                                @if(!$pedido->bloqueado)
-                                <button onclick="abrirModalEdicion({{ $pedido->id }}, '{{ $pedido->numero_pedido }}', '{{ strtolower($pedido->tipo_transaccion) }}', {{ $pedido->platform_id }}, {{ $pedido->venta_total }}, {{ $pedido->costo_envio }}, {{ $pedido->comision_plataforma }}, {{ json_encode($pedido->detalles) }})" class="text-yellow-500/50 hover:text-yellow-400 material-symbols-outlined text-lg transition-colors" title="Editar Valores">edit</button>
-                                <button onclick="borrarPedido({{ $pedido->id }})" class="text-red-500/50 hover:text-red-500 material-symbols-outlined text-lg transition-colors" title="Eliminar Registro">delete</button>
-                                @endif
+                            <div class="inline-block text-left">
+                                <button type="button" class="btn-action-menu text-dark-muted hover:text-white transition-colors p-1.5 rounded-full hover:bg-dark-700/50 outline-none">
+                                    <span class="material-symbols-outlined text-[20px] pointer-events-none">more_vert</span>
+                                </button>
+                                
+                                <div class="action-dropdown hidden fixed w-48 rounded-lg shadow-2xl bg-dark-800 border border-dark-600 z-[9999] overflow-hidden">
+                                    <div class="py-1 flex flex-col">
+                                        @if(!$esTransferido && !$pedido->bloqueado)
+                                        <button onclick="abrirModalConfirmarRetiro({{ $pedido->id }}, '{{ $pedido->numero_pedido }}', {{ $retiroEsperado }})" class="w-full text-left px-4 py-2.5 text-sm text-green-400 hover:bg-dark-700 flex items-center transition-colors">
+                                            <span class="material-symbols-outlined text-[18px] mr-3">price_check</span> Confirmar Pago
+                                        </button>
+                                        @endif
+                                        
+                                        <button onclick="verDetallesPedido('{{ $pedido->numero_pedido }}', {{ json_encode($pedido->detalles) }})" class="w-full text-left px-4 py-2.5 text-sm text-blue-400 hover:bg-dark-700 flex items-center transition-colors">
+                                            <span class="material-symbols-outlined text-[18px] mr-3">visibility</span> Ver Productos
+                                        </button>
+                                        
+                                        @if(!$pedido->bloqueado)
+                                        <button onclick="abrirModalEdicion({{ $pedido->id }}, '{{ $pedido->numero_pedido }}', '{{ strtolower($pedido->tipo_transaccion) }}', {{ $pedido->platform_id }}, {{ $pedido->venta_total }}, {{ $pedido->costo_envio }}, {{ $pedido->comision_plataforma }}, '{{ addslashes($pedido->cliente_nombre) }}', {{ json_encode($pedido->detalles) }})" class="w-full text-left px-4 py-2.5 text-sm text-yellow-500 hover:bg-dark-700 flex items-center transition-colors border-t border-dark-700/50 mt-1">
+                                            <span class="material-symbols-outlined text-[18px] mr-3">edit</span> Editar Valores
+                                        </button>
+                                        
+                                        <button onclick="borrarPedido({{ $pedido->id }})" class="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center transition-colors border-t border-dark-700/50 mt-1">
+                                            <span class="material-symbols-outlined text-[18px] mr-3">delete</span> Eliminar Registro
+                                        </button>
+                                        @endif
+                                    </div>
+                                </div>
                             </div>
                         </td>
                     </tr>
                     @empty
-                    <tr>
-                        <td colspan="8" class="p-8 text-center text-dark-muted italic">Sin registros en este periodo.</td>
-                    </tr>
+                    <tr><td colspan="9" class="p-8 text-center text-dark-muted">Sin registros.</td></tr>
                     @endforelse
                 </tbody>
             </table>
@@ -311,7 +375,7 @@
                 </tr>
             </thead>
             <tbody id="tabla_detalles_body" class="text-white divide-y divide-dark-700/50">
-                </tbody>
+            </tbody>
         </table>
     </div>
 </dialog>
@@ -330,6 +394,10 @@
                     <option value="reembolso">Reembolso</option>
                     <option value="contracargo">Contracargo</option>
                 </select>
+            </div>
+            <div class="col-span-2 mb-3">
+                <label class="block text-xs text-dark-muted mb-1">Nombre del Cliente</label>
+                <input type="text" id="edit_cliente" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none" required>
             </div>
             <div>
                 <label class="block text-xs text-dark-muted mb-1">Plataforma</label>
@@ -354,17 +422,39 @@
                 <input type="number" step="0.01" id="edit_comision" class="w-full bg-dark-900 border border-bella-main/50 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
             </div>
         </div>
-        
+
         <div class="mt-4 border-t border-dark-700 pt-3">
             <label class="block text-xs font-bold text-white uppercase mb-2">Ajustar Cantidad de Productos</label>
             <div id="edit_productos_container" class="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
-                </div>
+            </div>
             <p class="text-[10px] text-dark-muted mt-1 italic">*El precio unitario original se mantiene y el subtotal se calculará automáticamente.</p>
         </div>
 
         <div class="flex justify-end pt-2">
             <button type="submit" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-6 rounded transition-colors text-sm">Actualizar Registro</button>
         </div>
+    </form>
+</dialog>
+
+<dialog id="modalConfirmarRetiro" class="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl p-6 backdrop:bg-dark-900/80 w-full max-w-sm m-auto">
+    <div class="flex justify-between items-center mb-4 border-b border-dark-700 pb-2">
+        <h3 class="text-lg font-bold text-white">Confirmar Pago: <span id="conf_num_pedido" class="text-bella-main"></span></h3>
+        <button onclick="document.getElementById('modalConfirmarRetiro').close()" class="text-dark-muted hover:text-white material-symbols-outlined transition-colors">close</button>
+    </div>
+    <form id="formConfirmarRetiro" class="space-y-4">
+        <input type="hidden" id="conf_id">
+        <div>
+            <label class="block text-xs text-dark-muted mb-1">Monto Real Recibido en Banco ($)</label>
+            <input type="number" step="0.01" id="conf_monto" class="w-full bg-dark-900 border border-dark-600 rounded px-3 py-2 text-white outline-none focus:border-green-500 font-bold text-lg text-right" required>
+            <p class="text-[10px] text-dark-muted mt-1">Esperado por plataforma: <span id="conf_esperado" class="font-bold text-white"></span></p>
+        </div>
+        <div>
+            <label class="block text-xs text-dark-muted mb-1">Fecha de Ingreso a Banco</label>
+            <input type="date" id="conf_fecha" required class="w-full bg-dark-900 border border-dark-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-green-500 [color-scheme:dark]" value="{{ date('Y-m-d') }}">
+        </div>
+        <button type="submit" id="btnConfIndividual" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded transition-colors shadow-lg shadow-green-600/20">
+            Guardar y Transferir a Neta
+        </button>
     </form>
 </dialog>
 
@@ -382,7 +472,7 @@
             updateComisiones: "{{ route('contabilidad.actualizar-comisiones') }}",
             actualizarPedidoBase: "{{ url('/contabilidad/actualizar-pedido') }}",
             // NUEVA RUTA PARA EL DASHBOARD
-            dashboardData: "{{ url('/contabilidad/dashboard-data') }}" 
+            dashboardData: "{{ url('/contabilidad/dashboard-data') }}"
         },
         graficaData: @json($datosGrafica),
         token: "{{ csrf_token() }}"

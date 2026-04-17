@@ -9,16 +9,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ContabilidadPedido extends Model
 {
     protected $fillable = [
-        'fecha_salida',
-        'numero_pedido',
-        'tipo_transaccion',
-        'platform_id',
-        'venta_total',
-        'costo_envio',
-        'envio_pagado_cliente',
-        'comision_plataforma',
-        'utilidad_total',
-        'bloqueado'
+        'fecha_salida', 'numero_pedido', 'cliente_nombre', 'tipo_transaccion', // cliente_nombre añadido
+        'platform_id', 'lote_pago_id', 'venta_total', 'costo_envio', // lote_pago_id añadido
+        'envio_pagado_cliente', 'comision_plataforma', 'utilidad_total', 
+        'estatus_pago', 'comision_transferencia', 'fecha_retiro', 'bloqueado' // campos de retiro añadidos
     ];
 
     protected $casts = [

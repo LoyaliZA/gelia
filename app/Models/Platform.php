@@ -19,11 +19,8 @@ class Platform extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'commission_percent',
-        'fixed_fee',
-        'tax_rate',
-        'active',
+        'name', 'commission_percent', 'fixed_fee', 'tax_rate', 'active',
+        'frecuencia_pago', 'ultimo_corte', 'dias_personalizados' // Nuevos
     ];
 
     /**
