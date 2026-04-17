@@ -6,7 +6,7 @@
 <div class="container mx-auto px-4 py-8 max-w-7xl">
 
     <div class="bg-dark-800 rounded-xl p-4 border border-dark-700 shadow-lg mb-8 flex flex-col xl:flex-row justify-between items-center gap-4">
-        
+
         <div class="flex items-center gap-3 w-full xl:w-auto justify-center xl:justify-start">
             <h1 class="text-2xl font-bold text-white">Contabilidad <span class="text-bella-main">Bellaroma</span></h1>
 
@@ -25,7 +25,7 @@
         </div>
 
         <div class="flex flex-wrap items-center justify-center xl:justify-end gap-3 w-full xl:w-auto">
-            
+
             <form method="GET" action="{{ route('contabilidad.index') }}" class="flex bg-dark-900 rounded-lg border border-dark-700 overflow-hidden shrink-0 shadow-md">
                 <select name="mes" class="bg-transparent text-white border-none px-3 py-2 outline-none cursor-pointer text-sm">
                     @foreach(['01'=>'Enero','02'=>'Febrero','03'=>'Marzo','04'=>'Abril','05'=>'Mayo','06'=>'Junio','07'=>'Julio','08'=>'Agosto','09'=>'Septiembre','10'=>'Octubre','11'=>'Noviembre','12'=>'Diciembre'] as $num => $nombre)
@@ -233,16 +233,16 @@
                 <tbody class="text-sm divide-y divide-dark-700">
                     @forelse($pedidos as $pedido)
                     @php
-                        $tipo = strtolower($pedido->tipo_transaccion);
-                        $esVenta = str_contains($tipo, 'venta');
-                        $esReem = str_contains($tipo, 'reembolso');
-                        // COLORES: Verde para venta, Amarillo para reembolso, Rojo contracargo
-                        $badgeCls = $esVenta ? 'bg-green-500/20 text-green-400 border border-green-500/30' : ($esReem ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 'bg-red-500/20 text-red-500 border border-red-500/30');
-                        $textoTipo = $esVenta ? 'Venta Normal' : $pedido->tipo_transaccion;
-                        
-                        $utilidadPreRetiro = $pedido->utilidad_total + $pedido->comision_transferencia;
-                        $esTransferido = $pedido->estatus_pago === 'transferido';
-                        $retiroEsperado = $esVenta ? ($pedido->venta_total - $pedido->comision_plataforma) : -abs($pedido->venta_total + $pedido->comision_plataforma);
+                    $tipo = strtolower($pedido->tipo_transaccion);
+                    $esVenta = str_contains($tipo, 'venta');
+                    $esReem = str_contains($tipo, 'reembolso');
+                    // COLORES: Verde para venta, Amarillo para reembolso, Rojo contracargo
+                    $badgeCls = $esVenta ? 'bg-green-500/20 text-green-400 border border-green-500/30' : ($esReem ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' : 'bg-red-500/20 text-red-500 border border-red-500/30');
+                    $textoTipo = $esVenta ? 'Venta Normal' : $pedido->tipo_transaccion;
+
+                    $utilidadPreRetiro = $pedido->utilidad_total + $pedido->comision_transferencia;
+                    $esTransferido = $pedido->estatus_pago === 'transferido';
+                    $retiroEsperado = $esVenta ? ($pedido->venta_total - $pedido->comision_plataforma) : -abs($pedido->venta_total + $pedido->comision_plataforma);
                     @endphp
                     <tr class="hover:bg-dark-700/50 transition-colors registro-fila"
                         data-fecha="{{ $pedido->fecha_salida->format('Y-m-d') }}"
@@ -256,11 +256,11 @@
 
                         <td class="p-4 text-white">{{ $pedido->fecha_salida->format('d/m/Y') }}</td>
                         <td class="p-4 text-dark-muted">{{ $pedido->platform->name }}</td>
-                        
+
                         <td class="p-4 font-bold text-white tracking-wide">
                             {{ $pedido->numero_pedido }}
                         </td>
-                        
+
                         <td class="p-4">
                             <span class="text-[9px] px-2 py-1 rounded uppercase font-bold {{ $badgeCls }} tracking-wider shadow-sm">
                                 {{ $textoTipo }}
@@ -277,9 +277,9 @@
 
                         <td class="p-4 text-right font-bold {{ $esTransferido ? ($pedido->utilidad_total >= 0 ? 'text-green-500' : 'text-red-500') : 'text-dark-muted' }}">
                             @if($esTransferido)
-                                ${{ number_format($pedido->utilidad_total, 2) }}
+                            ${{ number_format($pedido->utilidad_total, 2) }}
                             @else
-                                <span class="opacity-30">---</span>
+                            <span class="opacity-30">---</span>
                             @endif
                         </td>
 
@@ -288,7 +288,7 @@
                                 <button type="button" class="btn-action-menu text-dark-muted hover:text-white transition-colors p-1.5 rounded-full hover:bg-dark-700/50 outline-none">
                                     <span class="material-symbols-outlined text-[20px] pointer-events-none">more_vert</span>
                                 </button>
-                                
+
                                 <div class="action-dropdown hidden fixed w-48 rounded-lg shadow-2xl bg-dark-800 border border-dark-600 z-[9999] overflow-hidden">
                                     <div class="py-1 flex flex-col">
                                         @if(!$esTransferido && !$pedido->bloqueado)
@@ -296,16 +296,16 @@
                                             <span class="material-symbols-outlined text-[18px] mr-3">price_check</span> Confirmar Pago
                                         </button>
                                         @endif
-                                        
+
                                         <button onclick="verDetallesPedido('{{ $pedido->numero_pedido }}', {{ json_encode($pedido->detalles) }})" class="w-full text-left px-4 py-2.5 text-sm text-blue-400 hover:bg-dark-700 flex items-center transition-colors">
                                             <span class="material-symbols-outlined text-[18px] mr-3">visibility</span> Ver Productos
                                         </button>
-                                        
+
                                         @if(!$pedido->bloqueado)
-                                        <button onclick="abrirModalEdicion({{ $pedido->id }}, '{{ $pedido->numero_pedido }}', '{{ strtolower($pedido->tipo_transaccion) }}', {{ $pedido->platform_id }}, {{ $pedido->venta_total }}, {{ $pedido->costo_envio }}, {{ $pedido->comision_plataforma }}, '{{ addslashes($pedido->cliente_nombre) }}', {{ json_encode($pedido->detalles) }})" class="w-full text-left px-4 py-2.5 text-sm text-yellow-500 hover:bg-dark-700 flex items-center transition-colors border-t border-dark-700/50 mt-1">
+                                        <button onclick="abrirModalEdicion({{ $pedido->id }}, '{{ $pedido->numero_pedido }}', '{{ strtolower($pedido->tipo_transaccion) }}', {{ $pedido->platform_id }}, {{ $pedido->venta_total }}, {{ $pedido->costo_envio }}, {{ $pedido->comision_plataforma }}, '{{ addslashes($pedido->cliente_nombre) }}', {{ json_encode($pedido->detalles) }}, {{ $pedido->envio_pagado_cliente ? 'true' : 'false' }})" class="w-full text-left px-4 py-2.5 text-sm text-yellow-500 hover:bg-dark-700 flex items-center transition-colors border-t border-dark-700/50 mt-1">
                                             <span class="material-symbols-outlined text-[18px] mr-3">edit</span> Editar Valores
                                         </button>
-                                        
+
                                         <button onclick="borrarPedido({{ $pedido->id }})" class="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center transition-colors border-t border-dark-700/50 mt-1">
                                             <span class="material-symbols-outlined text-[18px] mr-3">delete</span> Eliminar Registro
                                         </button>
@@ -316,7 +316,9 @@
                         </td>
                     </tr>
                     @empty
-                    <tr><td colspan="9" class="p-8 text-center text-dark-muted">Sin registros.</td></tr>
+                    <tr>
+                        <td colspan="9" class="p-8 text-center text-dark-muted">Sin registros.</td>
+                    </tr>
                     @endforelse
                 </tbody>
             </table>
@@ -430,6 +432,19 @@
                 <label class="block text-xs text-bella-main mb-1">Com. Cobrada</label>
                 <input type="number" step="0.01" id="edit_comision" class="w-full bg-dark-900 border border-bella-main/50 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
             </div>
+        </div>
+
+        <div class="mt-3 flex items-center bg-dark-900 p-2 rounded border border-dark-700">
+            <label class="flex items-center cursor-pointer w-full">
+                <input type="checkbox" id="edit_envio_pagado_cliente" class="form-checkbox h-4 w-4 text-bella-main rounded border-dark-600 bg-dark-800">
+                <span class="ml-2 text-sm text-white font-semibold">El Cliente Pagó el Envío</span>
+            </label>
+        </div>
+        <div class="mt-4 border-t border-dark-700 pt-3">
+            <label class="block text-xs font-bold text-white uppercase mb-2">Ajustar Cantidad de Productos</label>
+            <div id="edit_productos_container" class="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
+            </div>
+            <p class="text-[10px] text-dark-muted mt-1 italic">*El precio unitario original se mantiene y el subtotal se calculará automáticamente.</p>
         </div>
 
         <div class="mt-4 border-t border-dark-700 pt-3">

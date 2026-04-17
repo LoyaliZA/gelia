@@ -48,9 +48,8 @@ window.verDetallesPedido = function (numPedido, detalles) {
     }
     document.getElementById('modalDetalles').showModal();
 };
-
-// Actualizamos la función para recibir y renderizar los productos
-window.abrirModalEdicion = function (id, numPedido, tipo, platformId, venta, envio, comision, clienteNombre, detalles) {
+// 1. Modificar la firma de la función para recibir envioPagadoCliente
+window.abrirModalEdicion = function (id, numPedido, tipo, platformId, venta, envio, comision, clienteNombre, detalles, envioPagadoCliente) {
     document.getElementById('edit_id').value = id;
     document.getElementById('edit_num_pedido').innerText = numPedido;
 
@@ -67,7 +66,12 @@ window.abrirModalEdicion = function (id, numPedido, tipo, platformId, venta, env
     document.getElementById('edit_envio').value = parseFloat(envio).toFixed(2);
     document.getElementById('edit_comision').value = parseFloat(comision).toFixed(2);
 
-    // Inyectar los productos en el modal para editar sus cantidades
+    // NUEVO: Asignar el estado al checkbox
+    const checkEnvio = document.getElementById('edit_envio_pagado_cliente');
+    if (checkEnvio) {
+        checkEnvio.checked = (envioPagadoCliente === true || envioPagadoCliente === 1 || envioPagadoCliente === '1');
+    }
+
     const containerProductos = document.getElementById('edit_productos_container');
     containerProductos.innerHTML = '';
 
@@ -138,7 +142,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 costo_envio: document.getElementById('edit_envio').value,
                 comision_plataforma: document.getElementById('edit_comision').value,
                 cliente_nombre: document.getElementById('edit_cliente').value,
-                productos: productosEditados // Enviamos el array al backend
+                envio_pagado_cliente: document.getElementById('edit_envio_pagado_cliente').checked ? 1 : 0, // <-- NUEVO
+                productos: productosEditados
             };
 
             if (typeof window.mostrarCarga === 'function') window.mostrarCarga('Actualizando montos y cantidades...');

@@ -592,14 +592,14 @@ class ContabilidadController extends Controller
      */
     public function actualizarPedidoRapido(Request $request, $id)
     {
-        // 1. AÑADIMOS EL CLIENTE A LAS REGLAS DE VALIDACIÓN
         $request->validate([
             'tipo_transaccion' => 'required|string',
             'platform_id' => 'required|exists:platforms,id',
             'venta_total' => 'required|numeric',
             'costo_envio' => 'required|numeric',
             'comision_plataforma' => 'required|numeric',
-            'cliente_nombre' => 'nullable|string', // <-- Nuevo campo permitido
+            'cliente_nombre' => 'nullable|string',
+            'envio_pagado_cliente' => 'required|boolean', // <-- Validación añadida
             'productos' => 'required|array', 
             'productos.*.id' => 'required|exists:contabilidad_pedido_detalles,id',
             'productos.*.piezas' => 'required|integer|min:1',
@@ -615,12 +615,10 @@ class ContabilidadController extends Controller
 
             $costoProductos = 0.0;
 
-            // Actualizamos la cantidad de cada producto y recalculamos su subtotal
             foreach ($request->productos as $prodReq) {
                 $detalle = $pedido->detalles->where('id', $prodReq['id'])->first();
                 if ($detalle) {
                     $detalle->piezas = $prodReq['piezas'];
-                    // El precio unitario original se mantiene intacto, solo cambia el subtotal
                     $detalle->subtotal = $detalle->precio_unitario * $prodReq['piezas'];
                     $detalle->save();
                     
@@ -632,21 +630,24 @@ class ContabilidadController extends Controller
             $comision = (float) $request->comision_plataforma;
             $venta = (float) $request->venta_total;
             $tipo = strtolower($request->tipo_transaccion);
+            $envioPagadoCliente = $request->boolean('envio_pagado_cliente');
 
-            // Recálculo de utilidad con el nuevo costo de productos
+            // Lógica corregida: Determinar si el gasto impacta a la empresa
+            $gastoEnvioEmpresa = $envioPagadoCliente ? 0.0 : $gastoEnvio;
+
             if (str_contains($tipo, 'venta')) {
-                $utilidad = $venta - $costoProductos - $gastoEnvio - $comision;
+                $utilidad = $venta - $costoProductos - $gastoEnvioEmpresa - $comision;
             } else {
-                $utilidad = -($costoProductos + $gastoEnvio + $comision);
+                $utilidad = -($costoProductos + $gastoEnvioEmpresa + $comision);
             }
 
-            // 2. INYECTAMOS EL NOMBRE DEL CLIENTE AL MOMENTO DE GUARDAR
             $pedido->update([
                 'tipo_transaccion' => $tipo,
                 'platform_id' => $request->platform_id,
-                'cliente_nombre' => $request->cliente_nombre, // <-- Guardado en BD
+                'cliente_nombre' => $request->cliente_nombre,
                 'venta_total' => $venta,
                 'costo_envio' => $gastoEnvio,
+                'envio_pagado_cliente' => $envioPagadoCliente, // <-- Guardado en BD
                 'comision_plataforma' => $comision,
                 'utilidad_total' => $utilidad
             ]);
