@@ -104,11 +104,18 @@ class AromasListasController extends Controller
         set_time_limit(0);
         ini_set('memory_limit', '-1');
 
-        $divisorCostoCalculado = 1.3827;
-        $multiplicadorPlataformas = 0.77;
-        $multiplicadorLista3 = 0.8572;
-        $multiplicadorLista4 = 0.8229;
-        $multiplicadorBoutique = 0.75;
+        // Recepción y conversión de porcentajes dinámicos (Porcentaje a Multiplicador)
+        $multiplicadores = [
+            'plataformas' => 0.77,
+            'boutique' => 0.75,
+            'bronce' => 1 - ((float)$request->input('pct_bronce', 12.39) / 100),
+            'plata' => 1 - ((float)$request->input('pct_plata', 14.14) / 100),
+            'oro' => 1 - ((float)$request->input('pct_oro', 15.89) / 100),
+            'diamante' => 1 - ((float)$request->input('pct_diamante', 17.65) / 100),
+            'lista3' => 1 - ((float)$request->input('pct_lista3', 14.28) / 100), 
+            'lista4' => 1 - ((float)$request->input('pct_lista4', 17.71) / 100),
+            'divisor_costo' => 1.3827
+        ];
 
         $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA'); 
         $fecha = date('d-m-y');
@@ -191,14 +198,14 @@ class AromasListasController extends Controller
             });
         }
 
-        // 5. PROCESAR EXISTENCIAS
+        // 5. PROCESAR EXISTENCIAS (Actualización del closure)
         $listaCompleta = []; 
         $inconsistencias = []; 
         $tienePrecios = $request->hasFile('precios'); 
 
-        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique, $tienePrecios) {
+        $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $multiplicadores, $tienePrecios) {
             
-            (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $divisorCostoCalculado, $multiplicadorPlataformas, $multiplicadorLista3, $multiplicadorLista4, $multiplicadorBoutique, $tienePrecios) {
+            (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $multiplicadores, $tienePrecios) {
                 if (!isset($linea[4]) || $linea[4] == 'Código') return;
                 
                 $skuCrudo = trim((string)$linea[4]);
@@ -217,12 +224,9 @@ class AromasListasController extends Controller
                 $descripcion = $linea[5] ?? '';
                 $marca = $linea[6] ?? '';
                 
-                // Lógica inyectada para descartar productos si el filtro relojes está activo
                 if ($esListaPersonalizadaBD && $configuracionBD->filtro_relojes) {
                     $primeraLetra = strtoupper(substr(ltrim($descripcion), 0, 1));
-                    if ($primeraLetra !== 'R') {
-                        return;
-                    }
+                    if ($primeraLetra !== 'R') return;
                 }
 
                 $pg = $diccionarioPrecios[$skuBuscador] ?? 0.0;
@@ -237,12 +241,7 @@ class AromasListasController extends Controller
                     ];
                 }
 
-                $costoCalculado = $pg > 0 ? $pg / $divisorCostoCalculado : 0.0;
-                $plataformas = $pg * $multiplicadorPlataformas;
-                $lista3 = $pg * $multiplicadorLista3;
-                $lista4 = $pg * $multiplicadorLista4;
-                $listaBoutique = $pg * $multiplicadorBoutique; 
-
+                // Cálculos optimizados
                 $fila = [];
                 foreach ($columnasSeleccionadas as $columna) {
                     switch ($columna) {
@@ -251,12 +250,16 @@ class AromasListasController extends Controller
                         case 'Descripcion': $fila['Descripcion'] = $descripcion; break;
                         case 'Existencia': $fila['Existencia'] = $existencia; break;
                         case 'PG': $fila['PG'] = round($pg, 2); break;
-                        case 'Lista3': $fila['Lista3'] = round($lista3, 2); break;
-                        case 'Lista4': $fila['Lista4'] = round($lista4, 2); break;
-                        case 'ListaBoutique': $fila['Lista Boutique'] = round($listaBoutique, 2); break; 
-                        case 'Plataformas': $fila['Plataformas'] = round($plataformas, 2); break;
+                        case 'Bronce': $fila['Bronce'] = round($pg * $multiplicadores['bronce'], 2); break;
+                        case 'Plata': $fila['Plata'] = round($pg * $multiplicadores['plata'], 2); break;
+                        case 'Oro': $fila['Oro'] = round($pg * $multiplicadores['oro'], 2); break;
+                        case 'Diamante': $fila['Diamante'] = round($pg * $multiplicadores['diamante'], 2); break;
+                        case 'Lista3': $fila['Lista3'] = round($pg * $multiplicadores['lista3'], 2); break;
+                        case 'Lista4': $fila['Lista4'] = round($pg * $multiplicadores['lista4'], 2); break;
+                        case 'ListaBoutique': $fila['Lista Boutique'] = round($pg * $multiplicadores['boutique'], 2); break; 
+                        case 'Plataformas': $fila['Plataformas'] = round($pg * $multiplicadores['plataformas'], 2); break;
                         case 'CostoWizerp': $fila['Costo (Wizerp)'] = round($costoWizerp, 2); break;
-                        case 'CostoCalculado': $fila['Costo (Calculado)'] = round($costoCalculado, 2); break;
+                        case 'CostoCalculado': $fila['Costo (Calculado)'] = round($pg > 0 ? $pg / $multiplicadores['divisor_costo'] : 0.0, 2); break;
                         case 'Almacen': $fila['Almacen'] = $almacen; break;
                         case 'Marca': $fila['Marca'] = $marca; break;
                     }

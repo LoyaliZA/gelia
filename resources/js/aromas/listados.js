@@ -3,7 +3,7 @@ let ordenCreacion = [];
 
 const camposPorArchivo = {
     'existencias': ['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'],
-    'precios': ['PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado'],
+    'precios': ['PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado'],
     'costos': ['CostoWizerp']
 };
 
@@ -215,41 +215,46 @@ window.procesarSolicitud = async function (tipo) {
     const tienePrecios = document.getElementById('file-precios').files.length > 0;
     const tieneCostos = document.getElementById('file-costos').files.length > 0;
 
-    if (!isNaN(tipo)) {
-        if (!tieneExistencias) { window.mostrarToast("Existencias es obligatorio.", "red"); return; }
-        if (window.GeliaConfig && window.GeliaConfig.customLists) {
-            const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
-            if (listaConfig) {
-                const reqs = listaConfig.archivos_requeridos || [];
-                if (reqs.includes('precios') && !tienePrecios) { window.mostrarToast(`Requiere PRECIOS.`, "red"); return; }
-                if (reqs.includes('costos') && !tieneCostos) { window.mostrarToast(`Requiere COSTOS.`, "red"); return; }
-            }
-        }
-    } else {
-        if (!tieneExistencias) { window.mostrarToast("Primero sube Existencias", "red"); return; }
-        if ((tipo === 'resurtido' || tipo === 'actualizada' || tipo === 'inventario') && !tienePrecios) {
-            window.mostrarToast("Esta lista requiere: Existencias + Precios", "red"); return;
-        }
-        if (tipo === 'costos' && !tieneCostos) {
-            window.mostrarToast("Esta lista requiere: Existencias + Costos", "red"); return;
-        }
-    }
+    // Validación unificada inicial
+    if (!tieneExistencias) { window.mostrarToast("Existencias es obligatorio.", "red"); return; }
 
     let columnas = [];
     let nombreTipo = "";
 
+    // Configuración base inmutable por si no existen en localStorage
+    const listasDefault = {
+        'resurtido': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Bronce', 'Plata', 'Oro', 'Diamante'],
+        'costos': ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp'],
+        'actualizada': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas'],
+        'inventario': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Lista3']
+    };
+
     if (!isNaN(tipo)) {
         const listaConfig = window.GeliaConfig.customLists.find(l => l.id == tipo);
-        nombreTipo = listaConfig ? listaConfig.titulo_lista : "Lista Personalizada";
+        if (listaConfig) {
+            nombreTipo = listaConfig.titulo_lista;
+            const reqs = listaConfig.archivos_requeridos || [];
+            if (reqs.includes('precios') && !tienePrecios) { window.mostrarToast(`Requiere PRECIOS.`, "red"); return; }
+            if (reqs.includes('costos') && !tieneCostos) { window.mostrarToast(`Requiere COSTOS.`, "red"); return; }
+        } else {
+            nombreTipo = "Lista Personalizada";
+        }
     }
-    else if (tipo === 'resurtido') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Lista3']; nombreTipo = "Lista de Resurtido"; }
-    else if (tipo === 'costos') { columnas = ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp']; nombreTipo = "Lista de Costos"; }
-    else if (tipo === 'actualizada') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas']; nombreTipo = "Lista Actualizada"; }
-    else if (tipo === 'inventario') { columnas = ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Lista3']; nombreTipo = "Lista de Inventario"; }
-    else {
+    else if (listasDefault[tipo]) {
+        if (tipo !== 'costos' && !tienePrecios) { window.mostrarToast("Esta lista requiere: Existencias + Precios", "red"); return; }
+        if (tipo === 'costos' && !tieneCostos) { window.mostrarToast("Esta lista requiere: Existencias + Costos", "red"); return; }
+        
+        // Comprobación de persistencia local para listas editadas (Flexibilidad sin BD)
+        const storageCol = localStorage.getItem('cfg_lista_' + tipo);
+        columnas = storageCol ? JSON.parse(storageCol) : listasDefault[tipo];
+        nombreTipo = "Lista Predefinida - " + tipo.toUpperCase();
+    }
+    else if (tipo === 'manual') {
         columnas = ordenSeleccionado;
-        nombreTipo = "Lista Personalizada";
+        nombreTipo = "Lista Personalizada (Manual)";
         if (columnas.length === 0) { window.mostrarToast("Error: Selecciona columnas.", "red"); return; }
+    } else {
+        return;
     }
 
     const form = document.getElementById('form-principal');

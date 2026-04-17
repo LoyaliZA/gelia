@@ -3,6 +3,8 @@
 @section('title', 'Listados e Inventario | Gelia Hub')
 
 @section('aromas-content')
+
+
 <div id="modal-nueva-lista" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
     <div class="bg-dark-800 border border-dark-700 w-full max-w-4xl rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <div class="p-6 border-b border-dark-700 flex justify-between items-center sticky top-0 bg-dark-800 z-10">
@@ -89,7 +91,7 @@
                     <label class="block text-sm font-bold text-white mb-2">2. Selecciona Columnas (En orden):</label>
                     <p class="text-xs text-dark-muted mb-2">Haz clic para anadir/quitar. El numero indica el orden.</p>
                     <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
-                        @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado', 'CostoWizerp'] as $campo)
+                        @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado', 'CostoWizerp'] as $campo)
                         @php
                         $nombreMostrar = $campo;
                         if($campo == 'ListaBoutique') $nombreMostrar = 'Lista Boutique';
@@ -177,6 +179,23 @@
 
 <form id="form-principal" enctype="multipart/form-data">
     @csrf
+
+    <div class="bg-dark-900 border border-dark-700 rounded-xl p-5 mb-8 shadow-lg">
+        <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+            <span class="bg-blue-500 w-2 h-4 rounded"></span> Configuración de Descuentos (%)
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
+            @foreach(['bronce' => 12.39, 'plata' => 14.14, 'oro' => 15.89, 'diamante' => 17.65, 'lista3' => 14.28, 'lista4' => 17.71] as $key => $val)
+            <div>
+                <label class="block text-xs font-bold text-dark-muted mb-1 uppercase">{{ $key }}</label>
+                <div class="flex items-center">
+                    <input type="number" step="0.01" name="pct_{{ $key }}" value="{{ $val }}" class="w-full bg-dark-800 border border-dark-700 rounded-l p-2 text-white focus:border-aromas-main outline-none text-sm text-center">
+                    <span class="bg-dark-700 text-dark-muted px-2 py-2 rounded-r border border-l-0 border-dark-700 text-sm">%</span>
+                </div>
+            </div>
+            @endforeach
+        </div>
+    </div>
 
     <h2 class="text-xl font-bold text-white mb-4 flex items-center">
         <span class="bg-aromas-main w-2 h-6 rounded mr-2"></span> Zona de Carga Principal
@@ -293,7 +312,7 @@
             </label>
             @endforeach
 
-            @foreach(['PG', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique'] as $campo)
+            @foreach(['PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique'] as $campo)
             @php $nombreMostrar = $campo == 'ListaBoutique' ? 'Lista Boutique' : $campo; @endphp
             <label id="label-{{ $campo }}" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                 <input type="checkbox" id="check-{{ $campo }}" value="{{ $campo }}" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-aromas-main rounded bg-dark-900 border-dark-700">
