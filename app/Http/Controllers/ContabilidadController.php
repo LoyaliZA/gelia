@@ -226,20 +226,45 @@ class ContabilidadController extends Controller
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
-
-    /**
+/**
      * Genera un archivo CSV al vuelo con las columnas exactas para la carga masiva.
      */
     public function descargarPlantilla()
     {
-        // 1. AÑADIMOS 'Tipo_Transaccion' A LOS ENCABEZADOS
-        $headers = ['Fecha', 'Pedido', 'Tipo_Transaccion', 'Plataforma', 'SKU', 'Piezas', 'Precio_Pagina', 'Venta_Total', 'Envio_Cobrado', 'Comision_Cobrada', 'Envio_Pagado_Cliente'];
+        // 1. AÑADIMOS 'Cliente' A LOS ENCABEZADOS Y AJUSTAMOS EL ORDEN
+        $headers = [
+            'Fecha', 
+            'Pedido', 
+            'Cliente', // NUEVO CAMPO
+            'Tipo_Transaccion', 
+            'Plataforma', 
+            'SKU', 
+            'Piezas', 
+            'Precio_Pagina', 
+            'Venta_Total', 
+            'Envio_Cobrado', 
+            'Comision_Cobrada', 
+            'Envio_Pagado_Cliente'
+        ];
 
         $callback = function () use ($headers) {
             $file = fopen('php://output', 'w');
             fputcsv($file, $headers);
-            // Fila de ejemplo (Agregamos 'Venta' en la 3ra posición)
-            fputcsv($file, [date('Y-m-d'), 'Ej: 28098', 'Venta', 'Mercado Pago', '12345', '1', '1500.00', '1800.00', '99.00', '45.50', 'SI']);
+            // Fila de ejemplo actualizada
+            fputcsv($file, [
+                date('d/m/Y'), 
+                '28098', 
+                'Ej: Jair Treviño', // Ejemplo de cliente
+                'Venta', 
+                'Mercado Pago', 
+                '12345', 
+                '1', 
+                '1500.00', 
+                '1800.00', 
+                '99.00', 
+                '45.50', 
+                'SI'
+            ]);
             fclose($file);
         };
 
@@ -253,7 +278,7 @@ class ContabilidadController extends Controller
     }
 
    /**
-     * Procesa el archivo histórico, agrupa los pedidos descombinados y calcula utilidades.
+     * Procesa el archivo histórico, permitiendo tanto creación nueva como actualización parcial inteligente.
      */
     public function importarHistorico(Request $request)
     {
@@ -273,28 +298,28 @@ class ContabilidadController extends Controller
         try {
             (new FastExcel)->import($rutaCompleta, function ($linea) use (&$pedidosAgrupados) {
                 $numPedido = trim((string)($linea['Pedido'] ?? ''));
-                if ($numPedido === '' || $numPedido === 'Ej: 28098') return;
+                if ($numPedido === '' || $numPedido === '28098' || str_contains($numPedido, 'Ej:')) return;
 
                 if (!isset($pedidosAgrupados[$numPedido])) {
                     
                     // --- LÓGICA DE FECHA ROBUSTA ---
                     $fechaRaw = trim((string)($linea['Fecha'] ?? ''));
-                    $fechaFinal = date('Y-m-d'); // Fallback hoy
+                    $fechaFinal = null; // Iniciamos en null para saber si venía vacía
 
-                    try {
-                        if ($linea['Fecha'] instanceof \DateTime) {
-                            $fechaFinal = $linea['Fecha']->format('Y-m-d');
-                        } else {
-                            // Intentamos parsear el formato DD/MM/YY que mencionas
-                            $fechaFinal = \Carbon\Carbon::parse(str_replace('/', '-', $fechaRaw))->format('Y-m-d');
+                    if ($fechaRaw !== '') {
+                        try {
+                            if ($linea['Fecha'] instanceof \DateTime) {
+                                $fechaFinal = $linea['Fecha']->format('Y-m-d');
+                            } else {
+                                $fechaFinal = \Carbon\Carbon::parse(str_replace('/', '-', $fechaRaw))->format('Y-m-d');
+                            }
+                        } catch (\Exception $e) {
+                            Log::warning("GELIA: No se pudo parsear fecha $fechaRaw.");
                         }
-                    } catch (\Exception $e) {
-                        Log::warning("GELIA: No se pudo parsear fecha $fechaRaw, usando fecha actual.");
                     }
 
-                    // --- FUNCIÓN DE LIMPIEZA DE MONEDA (Signos, comas, espacios) ---
                     $limpiarNumero = function($valor) {
-                        if (!$valor) return 0.0;
+                        if ($valor === null || $valor === '') return null; // Retornamos null si está vacío
                         $soloNumero = preg_replace('/[^0-9.]/', '', (string)$valor);
                         return (float) $soloNumero;
                     };
@@ -302,92 +327,185 @@ class ContabilidadController extends Controller
                     $pedidosAgrupados[$numPedido] = [
                         'fecha' => $fechaFinal,
                         'cliente_nombre' => trim((string)($linea['Cliente'] ?? $linea['Nombre del Cliente'] ?? '')),
-                        'tipo_transaccion' => strtolower(trim((string)($linea['Tipo_Transaccion'] ?? 'venta'))),
-                        'plataforma' => trim((string)$linea['Plataforma'] ?? ''),
-                        'venta_total' => $limpiarNumero($linea['Venta_Total'] ?? 0),
-                        'envio_cobrado' => $limpiarNumero($linea['Envio_Cobrado'] ?? 0),
-                        'comision_cobrada' => $limpiarNumero($linea['Comision_Cobrada'] ?? 0),
-                        'envio_pagado_cliente' => strtoupper(trim((string)($linea['Envio_Pagado_Cliente'] ?? 'NO'))) === 'SI',
+                        'tipo_transaccion' => isset($linea['Tipo_Transaccion']) && $linea['Tipo_Transaccion'] !== '' ? strtolower(trim((string)$linea['Tipo_Transaccion'])) : null,
+                        'plataforma' => trim((string)($linea['Plataforma'] ?? '')),
+                        'venta_total' => $limpiarNumero($linea['Venta_Total'] ?? null),
+                        'envio_cobrado' => $limpiarNumero($linea['Envio_Cobrado'] ?? null),
+                        'comision_cobrada' => $limpiarNumero($linea['Comision_Cobrada'] ?? null),
+                        'envio_pagado_cliente' => isset($linea['Envio_Pagado_Cliente']) && $linea['Envio_Pagado_Cliente'] !== '' ? (strtoupper(trim((string)$linea['Envio_Pagado_Cliente'])) === 'SI') : null,
                         'productos' => []
                     ];
                 }
 
-                $limpiarNumero = function($valor) {
-                    $soloNumero = preg_replace('/[^0-9.]/', '', (string)$valor);
-                    return (float) $soloNumero;
-                };
+                $sku = trim((string)($linea['SKU'] ?? ''));
+                // Solo agregamos el producto a la lista si realmente viene un SKU en el Excel
+                if ($sku !== '') {
+                    $limpiarNumero = function($valor) {
+                        $soloNumero = preg_replace('/[^0-9.]/', '', (string)$valor);
+                        return (float) $soloNumero;
+                    };
 
-                $pedidosAgrupados[$numPedido]['productos'][] = [
-                    'sku' => trim((string)($linea['SKU'] ?? '')),
-                    'piezas' => (int)($linea['Piezas'] ?? 1),
-                    'precio_pagina' => $limpiarNumero($linea['Precio_Pagina'] ?? 0)
-                ];
+                    $pedidosAgrupados[$numPedido]['productos'][] = [
+                        'sku' => $sku,
+                        'piezas' => (int)($linea['Piezas'] ?? 1),
+                        'precio_pagina' => $limpiarNumero($linea['Precio_Pagina'] ?? 0)
+                    ];
+                }
             });
 
             DB::beginTransaction();
             $conteoRegistrados = 0;
+            $conteoActualizados = 0;
 
             foreach ($pedidosAgrupados as $numPedido => $data) {
-                $platKey = strtolower(str_replace(' ', '', $data['plataforma']));
-                $platform_id = isset($platformsDB[$platKey]) ? $platformsDB[$platKey]->id : $platformsDB->first()->id;
+                // Buscamos si el pedido ya existe
+                $pedidoExistente = ContabilidadPedido::where('numero_pedido', $numPedido)->first();
 
-                $costoProductos = 0.0;
-                foreach($data['productos'] as $prod) {
-                    $costoProductos += ($prod['precio_pagina'] * $prod['piezas']);
-                }
+                if ($pedidoExistente) {
+                    // ==========================================
+                    // FLUJO A: ACTUALIZACIÓN PARCIAL INTELIGENTE
+                    // ==========================================
+                    $updateData = [];
 
-                $gastoEnvioEmpresa = $data['envio_pagado_cliente'] ? 0.0 : $data['envio_cobrado'];
-                
-                // CORRECCIÓN: Ahora verificamos si la cadena contiene la palabra 'venta' 
-                // para que 'Venta Normal' sea procesada correctamente como ganancia.
-                if (str_contains($data['tipo_transaccion'], 'venta')) {
-                    $utilidadFinal = $data['venta_total'] - $costoProductos - $gastoEnvioEmpresa - $data['comision_cobrada'];
+                    // Solo actualizamos el cliente si viene en el Excel
+                    if ($data['cliente_nombre'] !== '') {
+                        $updateData['cliente_nombre'] = $data['cliente_nombre'];
+                    }
+
+                    // Solo actualizamos la plataforma si viene una válida
+                    if ($data['plataforma'] !== '') {
+                        $platKey = strtolower(str_replace(' ', '', $data['plataforma']));
+                        if (isset($platformsDB[$platKey])) {
+                            $updateData['platform_id'] = $platformsDB[$platKey]->id;
+                        }
+                    }
+
+                    // Actualizamos otros campos solo si no son null (es decir, venían en el Excel)
+                    if ($data['fecha'] !== null) $updateData['fecha_salida'] = $data['fecha'];
+                    if ($data['tipo_transaccion'] !== null) $updateData['tipo_transaccion'] = $data['tipo_transaccion'];
+                    if ($data['venta_total'] !== null) $updateData['venta_total'] = $data['venta_total'];
+                    if ($data['envio_cobrado'] !== null) $updateData['costo_envio'] = $data['envio_cobrado'];
+                    if ($data['envio_pagado_cliente'] !== null) $updateData['envio_pagado_cliente'] = $data['envio_pagado_cliente'];
+                    if ($data['comision_cobrada'] !== null) $updateData['comision_plataforma'] = $data['comision_cobrada'];
+
+                    // Si se enviaron montos nuevos, recalculamos la utilidad. 
+                    // Si no, la utilidad se queda intacta.
+                    if (isset($updateData['venta_total']) || isset($updateData['comision_plataforma']) || isset($updateData['costo_envio']) || count($data['productos']) > 0) {
+                        
+                        // Usamos los datos nuevos si existen, si no, usamos los que ya tiene el pedido en BD
+                        $ventaCalc = $updateData['venta_total'] ?? $pedidoExistente->venta_total;
+                        $comisionCalc = $updateData['comision_plataforma'] ?? $pedidoExistente->comision_plataforma;
+                        $envioCobradoCalc = $updateData['costo_envio'] ?? $pedidoExistente->costo_envio;
+                        $envioPagadoClienteCalc = $updateData['envio_pagado_cliente'] ?? $pedidoExistente->envio_pagado_cliente;
+                        $tipoTransaccionCalc = $updateData['tipo_transaccion'] ?? $pedidoExistente->tipo_transaccion;
+                        
+                        // Determinar el costo de los productos (Si llegaron productos nuevos, se recalculan, si no, se saca de la BD)
+                        $costoProductos = 0.0;
+                        if (count($data['productos']) > 0) {
+                            foreach($data['productos'] as $prod) {
+                                $costoProductos += ($prod['precio_pagina'] * $prod['piezas']);
+                            }
+                        } else {
+                            $costoProductos = $pedidoExistente->detalles->sum('subtotal');
+                        }
+
+                        $gastoEnvioEmpresa = $envioPagadoClienteCalc ? 0.0 : $envioCobradoCalc;
+                        
+                        if (str_contains($tipoTransaccionCalc, 'venta')) {
+                            $updateData['utilidad_total'] = $ventaCalc - $costoProductos - $gastoEnvioEmpresa - $comisionCalc;
+                        } else {
+                            $updateData['utilidad_total'] = -($costoProductos + $gastoEnvioEmpresa + $comisionCalc);
+                        }
+                    }
+
+                    // Aplicamos la actualización solo con los campos que cambiaron
+                    if (!empty($updateData)) {
+                        $pedidoExistente->update($updateData);
+                    }
+
+                    // Solo borramos y recreamos los productos SI el Excel traía productos para este pedido
+                    if (count($data['productos']) > 0) {
+                        $pedidoExistente->detalles()->delete();
+                        foreach($data['productos'] as $prod) {
+                            ContabilidadPedidoDetalle::create([
+                                'contabilidad_pedido_id' => $pedidoExistente->id,
+                                'sku' => $prod['sku'],
+                                'piezas' => $prod['piezas'],
+                                'nombre_producto' => 'Carga Masiva (SKU: '.$prod['sku'].')',
+                                'precio_unitario' => $prod['precio_pagina'],
+                                'subtotal' => $prod['precio_pagina'] * $prod['piezas']
+                            ]);
+                        }
+                    }
+                    $conteoActualizados++;
+
                 } else {
-                    // Es Reembolso o Contracargo
-                    $utilidadFinal = -($costoProductos + $gastoEnvioEmpresa + $data['comision_cobrada']);
-                }
+                    // ==========================================
+                    // FLUJO B: CREACIÓN DE PEDIDO NUEVO
+                    // ==========================================
+                    
+                    // Validaciones de seguridad: si es nuevo, necesita tener datos mínimos
+                    $platKey = strtolower(str_replace(' ', '', $data['plataforma']));
+                    $platform_id = isset($platformsDB[$platKey]) ? $platformsDB[$platKey]->id : $platformsDB->first()->id;
 
-                $pedido = ContabilidadPedido::updateOrCreate(
-                    ['numero_pedido' => $numPedido],
-                    [
-                        'fecha_salida' => $data['fecha'],
+                    $costoProductos = 0.0;
+                    foreach($data['productos'] as $prod) {
+                        $costoProductos += ($prod['precio_pagina'] * $prod['piezas']);
+                    }
+
+                    $gastoEnvioEmpresa = ($data['envio_pagado_cliente'] ?? false) ? 0.0 : ($data['envio_cobrado'] ?? 0);
+                    $tipoTransaccion = $data['tipo_transaccion'] ?? 'venta';
+                    $ventaTotal = $data['venta_total'] ?? 0;
+                    $comisionCobrada = $data['comision_cobrada'] ?? 0;
+                    
+                    if (str_contains($tipoTransaccion, 'venta')) {
+                        $utilidadFinal = $ventaTotal - $costoProductos - $gastoEnvioEmpresa - $comisionCobrada;
+                    } else {
+                        $utilidadFinal = -($costoProductos + $gastoEnvioEmpresa + $comisionCobrada);
+                    }
+
+                    $nuevoPedido = ContabilidadPedido::create([
+                        'fecha_salida' => $data['fecha'] ?? date('Y-m-d'),
+                        'numero_pedido' => $numPedido,
                         'cliente_nombre' => $data['cliente_nombre'],
-                        'tipo_transaccion' => $data['tipo_transaccion'],
+                        'tipo_transaccion' => $tipoTransaccion,
                         'platform_id' => $platform_id,
-                        'venta_total' => $data['venta_total'],
-                        'costo_envio' => $data['envio_cobrado'],
-                        'envio_pagado_cliente' => $data['envio_pagado_cliente'],
-                        'comision_plataforma' => $data['comision_cobrada'],
+                        'venta_total' => $ventaTotal,
+                        'costo_envio' => $data['envio_cobrado'] ?? 0,
+                        'envio_pagado_cliente' => $data['envio_pagado_cliente'] ?? false,
+                        'comision_plataforma' => $comisionCobrada,
                         'utilidad_total' => $utilidadFinal,
-                    ]
-                );
-
-                $pedido->detalles()->delete();
-
-                foreach($data['productos'] as $prod) {
-                    ContabilidadPedidoDetalle::create([
-                        'contabilidad_pedido_id' => $pedido->id,
-                        'sku' => $prod['sku'],
-                        'piezas' => $prod['piezas'],
-                        'nombre_producto' => 'Carga Masiva (SKU: '.$prod['sku'].')',
-                        'precio_unitario' => $prod['precio_pagina'],
-                        'subtotal' => $prod['precio_pagina'] * $prod['piezas']
+                        'estatus_pago' => 'transferido', // Históricos se asumen cobrados
+                        'fecha_retiro' => $data['fecha'] ?? date('Y-m-d'),
+                        'comision_transferencia' => 0
                     ]);
+
+                    foreach($data['productos'] as $prod) {
+                        ContabilidadPedidoDetalle::create([
+                            'contabilidad_pedido_id' => $nuevoPedido->id,
+                            'sku' => $prod['sku'],
+                            'piezas' => $prod['piezas'],
+                            'nombre_producto' => 'Carga Masiva (SKU: '.$prod['sku'].')',
+                            'precio_unitario' => $prod['precio_pagina'],
+                            'subtotal' => $prod['precio_pagina'] * $prod['piezas']
+                        ]);
+                    }
+                    $conteoRegistrados++;
                 }
-                $conteoRegistrados++;
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => "Se importaron $conteoRegistrados pedidos exitosamente."]);
+            return response()->json(['success' => true, 'message' => "Proceso exitoso: $conteoRegistrados pedidos nuevos creados. $conteoActualizados pedidos actualizados parcialmente."]);
 
         } catch (\Throwable $e) {
             DB::rollBack();
-            Log::error('GELIA (Conta Historico) - Error: ' . $e->getMessage());
+            Log::error('GELIA (Conta Historico) - Error: ' . $e->getMessage() . ' - Línea: ' . $e->getLine());
             return response()->json(['success' => false, 'message' => 'Fallo al procesar el archivo. Verifique el formato.'], 500);
         } finally {
             if (file_exists($rutaCompleta)) unlink($rutaCompleta);
         }
     }
+
     /**
      * API para alimentar el Dashboard Avanzado de forma dinámica.
      */

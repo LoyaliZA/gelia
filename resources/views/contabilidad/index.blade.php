@@ -5,13 +5,14 @@
 @section('content')
 <div class="container mx-auto px-4 py-8 max-w-7xl">
 
-    <div class="bg-dark-800 rounded-xl p-4 border border-dark-700 shadow-lg mb-8 flex flex-col lg:flex-row justify-between items-center gap-4">
-        <div class="flex items-center gap-3">
+    <div class="bg-dark-800 rounded-xl p-4 border border-dark-700 shadow-lg mb-8 flex flex-col xl:flex-row justify-between items-center gap-4">
+        
+        <div class="flex items-center gap-3 w-full xl:w-auto justify-center xl:justify-start">
             <h1 class="text-2xl font-bold text-white">Contabilidad <span class="text-bella-main">Bellaroma</span></h1>
 
             <div class="group relative inline-block cursor-help">
                 <span class="material-symbols-outlined text-dark-muted hover:text-white transition-colors">help</span>
-                <div class="absolute left-0 bottom-full mb-2 w-72 p-3 bg-dark-900 border border-dark-600 rounded-lg text-xs text-dark-muted opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
+                <div class="absolute left-0 top-full mt-2 w-72 p-3 bg-dark-900 border border-dark-600 rounded-lg text-xs text-dark-muted opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-2xl">
                     <p class="font-bold text-white mb-1">Guía del Sistema:</p>
                     <ul class="space-y-1">
                         <li>• <b class="text-bella-main">Carga Lista:</b> Sube el Excel de precios para activar el formulario.</li>
@@ -23,8 +24,9 @@
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3">
-            <form method="GET" action="{{ route('contabilidad.index') }}" class="flex bg-dark-900 rounded-lg border border-dark-700 overflow-hidden">
+        <div class="flex flex-wrap items-center justify-center xl:justify-end gap-3 w-full xl:w-auto">
+            
+            <form method="GET" action="{{ route('contabilidad.index') }}" class="flex bg-dark-900 rounded-lg border border-dark-700 overflow-hidden shrink-0 shadow-md">
                 <select name="mes" class="bg-transparent text-white border-none px-3 py-2 outline-none cursor-pointer text-sm">
                     @foreach(['01'=>'Enero','02'=>'Febrero','03'=>'Marzo','04'=>'Abril','05'=>'Mayo','06'=>'Junio','07'=>'Julio','08'=>'Agosto','09'=>'Septiembre','10'=>'Octubre','11'=>'Noviembre','12'=>'Diciembre'] as $num => $nombre)
                     <option value="{{ $num }}" class="bg-dark-900" {{ $mesActual == $num ? 'selected' : '' }}>{{ $nombre }}</option>
@@ -34,26 +36,33 @@
                     <option value="2025" {{ $anioActual == '2025' ? 'selected' : '' }}>2025</option>
                     <option value="2026" {{ $anioActual == '2026' ? 'selected' : '' }}>2026</option>
                 </select>
-                <button type="submit" class="bg-bella-main hover:bg-red-700 text-white px-4 py-2 transition-colors material-symbols-outlined text-base">search</button>
+                <button type="submit" class="bg-bella-main hover:bg-red-700 text-white px-3 py-2 transition-colors material-symbols-outlined text-base">search</button>
             </form>
 
             <div class="h-8 w-px bg-dark-700 hidden lg:block"></div>
 
-            <button type="button" id="btnToggleMasivo" class="text-sm bg-dark-700 hover:bg-dark-600 text-white px-4 py-2 rounded-lg border border-dark-600 transition-colors flex items-center">
-                <span class="material-symbols-outlined mr-2 text-base">cloud_upload</span> Carga Masiva
-            </button>
+            <div class="flex items-center gap-2 flex-wrap justify-center">
+                <button type="button" id="btnToggleMasivo" class="text-sm bg-dark-700 hover:bg-dark-600 text-white px-4 py-2 rounded-lg border border-dark-600 transition-colors flex items-center shadow-md">
+                    <span class="material-symbols-outlined mr-2 text-base">cloud_upload</span> Carga Masiva
+                </button>
 
-            <a href="{{ route('contabilidad.exportar-reporte', ['mes' => $mesActual, 'anio' => $anioActual]) }}" class="text-sm bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white px-4 py-2 rounded-lg border border-green-600/50 transition-colors flex items-center">
-                <span class="material-symbols-outlined mr-2 text-base">table_view</span> Excel
-            </a>
+                <a href="{{ route('contabilidad.exportar-reporte', ['mes' => $mesActual, 'anio' => $anioActual]) }}" class="text-sm bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white px-4 py-2 rounded-lg border border-green-600/50 transition-colors flex items-center shadow-md">
+                    <span class="material-symbols-outlined mr-2 text-base">table_view</span> Excel
+                </a>
 
-            <button type="button" id="btnAbrirDashboard" class="text-sm bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg border border-blue-600/50 transition-colors flex items-center">
-                <span class="material-symbols-outlined mr-2 text-base">monitoring</span> Análisis
-            </button>
+                <a href="{{ route('contabilidad.retiros') }}" class="text-sm bg-yellow-600/20 text-yellow-400 hover:bg-yellow-600 hover:text-white px-4 py-2 rounded-lg border border-yellow-600/50 transition-colors flex items-center shadow-md">
+                    <span class="material-symbols-outlined mr-2 text-base">account_balance_wallet</span> Retiros
+                </a>
 
-            <button type="button" onclick="document.getElementById('modalComisiones').showModal()" class="text-sm bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white px-3 py-2 rounded-lg border border-purple-600/50 transition-colors flex items-center" title="Configurar Comisiones">
-                <span class="material-symbols-outlined text-base">settings</span>
-            </button>
+                <button type="button" id="btnAbrirDashboard" class="text-sm bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-lg border border-blue-600/50 transition-colors flex items-center shadow-md">
+                    <span class="material-symbols-outlined mr-2 text-base">monitoring</span> Análisis
+                </button>
+
+                <button type="button" onclick="document.getElementById('modalComisiones').showModal()" class="text-sm bg-purple-600/20 text-purple-400 hover:bg-purple-600 hover:text-white px-3 py-2 rounded-lg border border-purple-600/50 transition-colors flex items-center shadow-md" title="Configurar Comisiones">
+                    <span class="material-symbols-outlined text-base">settings</span>
+                </button>
+            </div>
+
         </div>
     </div>
 
