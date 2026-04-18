@@ -36,6 +36,10 @@ Route::prefix('aromas')->group(function () {
     // NUEVA RUTA: Descarga Diferida de Excel con Inconsistencias
     Route::get('/descargar-temporal', [AromasListasController::class, 'descargarTemporal'])->name('gelia.descargar-temporal');
 
+    // ---> ¡NUEVAS RUTAS DE CONFIGURACIÓN GLOBAL! <---
+    Route::get('/configuracion/obtener', [AromasListasController::class, 'obtenerConfiguracion'])->name('gelia.config.obtener');
+    Route::post('/configuracion/guardar', [AromasListasController::class, 'guardarConfiguracion'])->name('gelia.config.guardar');
+
     // ---------------------------------------------------------
     // 2. MÓDULO DE CLIENTES INDEPENDIENTE
     // ---------------------------------------------------------

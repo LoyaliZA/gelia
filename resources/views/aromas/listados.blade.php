@@ -167,30 +167,39 @@
     <div class="bg-dark-800 border border-dark-700 w-full max-w-4xl rounded-xl shadow-2xl">
         <div class="p-6 border-b border-dark-700 flex justify-between items-center bg-dark-900 rounded-t-xl">
             <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                <span class="bg-blue-500 w-2 h-6 rounded"></span> Configuración Global de Descuentos (%)
+                <span class="bg-blue-500 w-2 h-6 rounded"></span> Configuración de Descuentos Globales
             </h2>
-            <button onclick="cerrarModalConfiguracion()" class="text-gray-400 hover:text-white text-2xl transition">&times;</button>
+            <div class="flex items-center gap-4">
+                <button type="button" id="btn-desbloquear-config" onclick="desbloquearConfiguracion()" class="flex items-center gap-2 text-sm px-3 py-1.5 bg-dark-700 hover:bg-dark-600 border border-dark-600 rounded text-gray-300 transition">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                    Desbloquear
+                </button>
+                <button onclick="cerrarModalConfiguracion()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
         </div>
         
-        <div class="p-6">
-            <p class="text-sm text-dark-muted mb-6">Estos valores se guardarán automáticamente en tu navegador y se aplicarán a todas las listas generadas que utilicen estos campos.</p>
-            
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
-                @foreach(['bronce' => 12.39, 'plata' => 14.14, 'oro' => 15.89, 'diamante' => 17.65, 'lista3' => 14.28, 'lista4' => 17.71] as $key => $val)
-                <div>
-                    <label class="block text-xs font-bold text-gray-300 mb-1 uppercase">{{ $key }}</label>
-                    <div class="flex items-center">
-                        <input type="number" step="0.01" id="input-pct-{{ $key }}" class="w-full bg-dark-900 border border-dark-700 rounded-l p-2 text-white focus:border-blue-500 outline-none text-center font-mono">
-                        <span class="bg-dark-700 text-dark-muted px-3 py-2 rounded-r border border-l-0 border-dark-700 text-sm font-bold">%</span>
-                    </div>
+        <div class="p-6 grid grid-cols-2 md:grid-cols-4 gap-6">
+            @php
+                $campos = [
+                    'bronce' => 'Bronce', 'plata' => 'Plata', 'oro' => 'Oro', 
+                    'diamante' => 'Diamante', 'plataformas' => 'Plataformas',
+                    'lista3' => 'Lista 3', 'lista4' => 'Lista 4'
+                ];
+            @endphp
+
+            @foreach($campos as $key => $label)
+            <div>
+                <label class="block text-xs font-bold text-gray-300 mb-1 uppercase">{{ $label }}</label>
+                <div class="flex items-center">
+                    <input type="number" step="0.01" id="input-pct-{{ $key }}" disabled class="config-input w-full bg-dark-900 border border-dark-700 rounded-l p-2 text-white text-center font-mono disabled:opacity-50">
+                    <span class="bg-dark-700 text-dark-muted px-2 py-2 rounded-r border border-l-0 border-dark-700 text-sm font-bold">%</span>
                 </div>
-                @endforeach
             </div>
+            @endforeach
         </div>
 
         <div class="p-4 border-t border-dark-700 flex justify-end gap-3 bg-dark-900 rounded-b-xl">
-            <button type="button" onclick="cerrarModalConfiguracion()" class="px-4 py-2 text-dark-muted hover:text-white transition text-sm">Cancelar</button>
-            <button type="button" onclick="guardarConfiguracionDescuentos()" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg transition text-sm">Guardar Cambios</button>
+            <button type="button" id="btn-guardar-config" onclick="guardarConfiguracionGlobal()" disabled class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg shadow-lg opacity-50 cursor-not-allowed transition text-sm">Guardar Cambios Globales</button>
         </div>
     </div>
 </div>
@@ -372,11 +381,15 @@
 <script>
     window.GeliaConfig = {
         routes: {
-            // Asegúrate de que los nombres de las rutas coincidan con tu archivo web.php
             generar: "{{ route('gelia.generar') }}",
             guardar: "{{ route('gelia.guardar') }}",
             actualizar: "{{ route('gelia.actualizar', ['id' => ':id']) }}",
-            eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}"
+            eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}",
+            descargar_temporal: "{{ route('gelia.descargar-temporal') }}",
+            
+            // ---> RUTAS FALTANTES QUE CAUSABAN EL ERROR <---
+            obtener_config: "{{ route('gelia.config.obtener') }}",
+            guardar_config: "{{ route('gelia.config.guardar') }}"
         },
         customLists: @json($listasPersonalizadas ?? [])
     };

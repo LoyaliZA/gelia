@@ -85,39 +85,104 @@ window.abrirModalEdicion = function (event, id) {
     toggleModal(true);
 }
 
-// Valores por defecto como salvaguarda
-const configDescuentosDefault = {
-    bronce: 12.39, plata: 14.14, oro: 15.89,
-    diamante: 17.65, lista3: 14.28, lista4: 17.71
+
+const PIN_SISTEMA = "1998"; // Define aquí tu contraseña
+
+// Valores por defecto seguros por si la BD está vacía tras una migración
+const defaultSettings = {
+    bronce: 12.39, plata: 14.14, oro: 15.89, 
+    diamante: 17.65, plataformas: 23.00, lista3: 14.28, lista4: 17.71
 };
 
-window.abrirModalConfiguracion = function () {
-    const config = JSON.parse(localStorage.getItem('gelia_config_descuentos')) || configDescuentosDefault;
+window.abrirModalConfiguracion = async function() {
+    window.mostrarCarga("Cargando parámetros globales...");
+    try {
+        const response = await fetch(window.GeliaConfig.routes.obtener_config);
+        const config = await response.json();
+        
+        const keys = ['bronce', 'plata', 'oro', 'diamante', 'plataformas', 'lista3', 'lista4'];
+        keys.forEach(key => {
+            const input = document.getElementById(`input-pct-${key}`);
+            // Si la BD tiene el valor lo usa, si no, usa el default
+            if (input) input.value = config[`pct_${key}`] || defaultSettings[key];
+        });
 
-    Object.keys(config).forEach(key => {
-        const input = document.getElementById(`input-pct-${key}`);
-        if (input) input.value = config[key];
-    });
+        bloquearCampos(true);
+        document.getElementById('modal-configuracion').classList.remove('hidden');
+    } catch (e) {
+        window.mostrarToast("Fallo al obtener configuración.", "red");
+        console.error(e);
+    } finally {
+        window.ocultarCarga();
+    }
+}
 
-    document.getElementById('modal-configuracion').classList.remove('hidden');
-};
+window.desbloquearConfiguracion = function() {
+    const pin = prompt("Ingresa el PIN de seguridad:");
+    if (pin === PIN_SISTEMA) {
+        bloquearCampos(false);
+        window.mostrarToast("Acceso concedido.", "blue");
+    } else if (pin !== null) {
+        window.mostrarToast("PIN incorrecto.", "red");
+    }
+}
+
+function bloquearCampos(estado) {
+    document.querySelectorAll('.config-input').forEach(i => i.disabled = estado);
+    const btnSave = document.getElementById('btn-guardar-config');
+    btnSave.disabled = estado;
+    btnSave.classList.toggle('opacity-50', estado);
+    btnSave.classList.toggle('cursor-not-allowed', estado);
+    document.getElementById('btn-desbloquear-config').classList.toggle('hidden', !estado);
+}
 
 window.cerrarModalConfiguracion = function () {
     document.getElementById('modal-configuracion').classList.add('hidden');
 };
 
-window.guardarConfiguracionDescuentos = function () {
-    const nuevaConfig = {};
-
-    Object.keys(configDescuentosDefault).forEach(key => {
-        const inputVal = document.getElementById(`input-pct-${key}`).value;
-        nuevaConfig[key] = parseFloat(inputVal) || configDescuentosDefault[key];
+window.guardarConfiguracionGlobal = async function() {
+    const formData = new FormData();
+    const keys = ['bronce', 'plata', 'oro', 'diamante', 'plataformas', 'lista3', 'lista4'];
+    
+    keys.forEach(key => {
+        formData.append(`pct_${key}`, document.getElementById(`input-pct-${key}`).value);
     });
 
-    localStorage.setItem('gelia_config_descuentos', JSON.stringify(nuevaConfig));
-    window.cerrarModalConfiguracion();
-    window.mostrarToast("Configuración de descuentos actualizada exitosamente.", "green");
+    window.mostrarCarga("Sincronizando cambios...");
+
+    // Extracción segura del Token CSRF (Evita el "crash" de JS)
+    const tokenCSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('input[name="_token"]')?.value || '';
+
+    try {
+        const response = await fetch(window.GeliaConfig.routes.guardar_config, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: { 
+                'X-CSRF-TOKEN': tokenCSRF,
+                'Accept': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            window.mostrarToast("Configuración actualizada globalmente.", "green");
+            cerrarModalConfiguracion();
+        } else {
+            const errData = await response.json();
+            throw new Error(errData.message || "Error al procesar en el servidor");
+        }
+    } catch (e) {
+        window.mostrarToast("Error de conexión: " + e.message, "red");
+        console.error(e);
+    } finally {
+        window.ocultarCarga();
+    }
+}
+
+window.cerrarModalConfiguracion = function () {
+    document.getElementById('modal-configuracion').classList.add('hidden');
 };
+
 
 // ==========================================
 // ORDENAMIENTO DE COLUMNAS
@@ -296,12 +361,6 @@ window.procesarSolicitud = async function (tipo) {
 
     if (columnas.length > 0) formData.append('orden_final', columnas.join(','));
     formData.append('tipo_lista', tipo);
-
-    // --- NUEVO: Inyectar descuentos desde LocalStorage ---
-    const configDesc = JSON.parse(localStorage.getItem('gelia_config_descuentos')) || configDescuentosDefault;
-    Object.keys(configDesc).forEach(key => {
-        formData.append(`pct_${key}`, configDesc[key]);
-    });
 
 
     window.mostrarCarga(`Generando: ${nombreTipo}...`);

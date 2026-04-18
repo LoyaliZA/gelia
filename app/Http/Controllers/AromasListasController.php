@@ -7,13 +7,14 @@ use Rap2hpoutre\FastExcel\FastExcel;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use App\Models\CustomList;
+use Illuminate\Support\Facades\DB;
 
 class AromasListasController extends Controller
 {
     public function index()
     {
         $listasPersonalizadas = CustomList::where('active', true)->get();
-        return view('aromas.listados', compact('listasPersonalizadas')); 
+        return view('aromas.listados', compact('listasPersonalizadas'));
     }
 
     public function guardarLista(Request $request)
@@ -104,20 +105,23 @@ class AromasListasController extends Controller
         set_time_limit(0);
         ini_set('memory_limit', '-1');
 
-        // Recepción y conversión de porcentajes dinámicos (Porcentaje a Multiplicador)
+        // Obtener configuración global de la base de datos
+        $settings = DB::table('gelia_settings')->pluck('value', 'key');
+
+        // Mapeo con valores de respaldo (defaults) si la tabla está vacía
         $multiplicadores = [
-            'plataformas' => 0.77,
-            'boutique' => 0.75,
-            'bronce' => 1 - ((float)$request->input('pct_bronce', 12.39) / 100),
-            'plata' => 1 - ((float)$request->input('pct_plata', 14.14) / 100),
-            'oro' => 1 - ((float)$request->input('pct_oro', 15.89) / 100),
-            'diamante' => 1 - ((float)$request->input('pct_diamante', 17.65) / 100),
-            'lista3' => 1 - ((float)$request->input('pct_lista3', 14.28) / 100), 
-            'lista4' => 1 - ((float)$request->input('pct_lista4', 17.71) / 100),
+            'bronce'      => 1 - ((float)($settings['pct_bronce'] ?? 12.39) / 100),
+            'plata'       => 1 - ((float)($settings['pct_plata'] ?? 14.14) / 100),
+            'oro'         => 1 - ((float)($settings['pct_oro'] ?? 15.89) / 100),
+            'diamante'    => 1 - ((float)($settings['pct_diamante'] ?? 17.65) / 100),
+            'plataformas' => 1 - ((float)($settings['pct_plataformas'] ?? 23.00) / 100), // Ejemplo 23%
+            'lista3'      => 1 - ((float)($settings['pct_lista3'] ?? 14.28) / 100),
+            'lista4'      => 1 - ((float)($settings['pct_lista4'] ?? 17.71) / 100),
+            'boutique'    => 0.75,
             'divisor_costo' => 1.3827
         ];
 
-        $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA'); 
+        $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA');
         $fecha = date('d-m-y');
 
         // 1. DETECCIÓN DE CONFIGURACIÓN
@@ -127,19 +131,28 @@ class AromasListasController extends Controller
         if ($esListaPersonalizadaBD) {
             $configuracionBD = CustomList::find($tipoLista);
             if (!$configuracionBD) return response()->json(['error' => 'Lista no encontrada'], 404);
-            
+
             $nombreArchivo = $configuracionBD->nombre_archivo_salida . "-$fecha.xlsx";
             $columnasSeleccionadas = $configuracionBD->columnas_exportar;
-
         } else {
-            $ordenCadena = $request->input('orden_final'); 
-            
+            $ordenCadena = $request->input('orden_final');
+
             switch ($tipoLista) {
-                case 'resurtido': $nombreArchivo = "LISTA-DE-RESURTIDO-$fecha.xlsx"; break;
-                case 'costos': $nombreArchivo = "LISTA-DE-COSTOS-$fecha.xlsx"; break;
-                case 'actualizada': $nombreArchivo = "LISTA-ACTUALIZADA-$fecha.xlsx"; break;
-                case 'inventario': $nombreArchivo = "LISTA-DE-INVENTARIO-$fecha.xlsx"; break;
-                default: $nombreArchivo = "LISTA-PERSONALIZADA-$fecha.xlsx"; break;
+                case 'resurtido':
+                    $nombreArchivo = "LISTA-DE-RESURTIDO-$fecha.xlsx";
+                    break;
+                case 'costos':
+                    $nombreArchivo = "LISTA-DE-COSTOS-$fecha.xlsx";
+                    break;
+                case 'actualizada':
+                    $nombreArchivo = "LISTA-ACTUALIZADA-$fecha.xlsx";
+                    break;
+                case 'inventario':
+                    $nombreArchivo = "LISTA-DE-INVENTARIO-$fecha.xlsx";
+                    break;
+                default:
+                    $nombreArchivo = "LISTA-PERSONALIZADA-$fecha.xlsx";
+                    break;
             }
 
             if (!empty($ordenCadena)) {
@@ -191,7 +204,7 @@ class AromasListasController extends Controller
                 (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$diccionarioCostosWizerp) {
                     if (!isset($linea[1]) || $linea[1] == 'SKU' || $linea[1] == '') return;
                     $sku = ltrim(trim((string)$linea[1]), '0');
-                    $costo = $linea[5] ?? 0; 
+                    $costo = $linea[5] ?? 0;
                     $costoLimpio = str_replace(['$', ','], '', (string)$costo);
                     $diccionarioCostosWizerp[$sku] = is_numeric($costoLimpio) ? (float)$costoLimpio : 0.0;
                 });
@@ -199,31 +212,31 @@ class AromasListasController extends Controller
         }
 
         // 5. PROCESAR EXISTENCIAS (Actualización del closure)
-        $listaCompleta = []; 
-        $inconsistencias = []; 
-        $tienePrecios = $request->hasFile('precios'); 
+        $listaCompleta = [];
+        $inconsistencias = [];
+        $tienePrecios = $request->hasFile('precios');
 
         $this->procesarArchivoSeguro($request->file('existencias'), function ($ruta) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $multiplicadores, $tienePrecios) {
-            
+
             (new FastExcel)->withoutHeaders()->import($ruta, function ($linea) use (&$listaCompleta, &$inconsistencias, $diccionarioPrecios, $diccionarioCostosWizerp, $columnasSeleccionadas, $esListaPersonalizadaBD, $configuracionBD, $multiplicadores, $tienePrecios) {
                 if (!isset($linea[4]) || $linea[4] == 'Código') return;
-                
+
                 $skuCrudo = trim((string)$linea[4]);
-                if ($skuCrudo === '') return; 
+                if ($skuCrudo === '') return;
                 $skuBuscador = ltrim($skuCrudo, '0');
 
                 $existenciaRaw = $linea[10] ?? 0;
                 $existencia = is_numeric($existenciaRaw) ? (int)$existenciaRaw : 0;
 
                 if ($esListaPersonalizadaBD && $configuracionBD->solo_con_existencia) {
-                    if ($existencia <= 0) return; 
+                    if ($existencia <= 0) return;
                 }
 
                 $almacen = $linea[1] ?? '';
                 $folio = $linea[3] ?? '';
                 $descripcion = $linea[5] ?? '';
                 $marca = $linea[6] ?? '';
-                
+
                 if ($esListaPersonalizadaBD && $configuracionBD->filtro_relojes) {
                     $primeraLetra = strtoupper(substr(ltrim($descripcion), 0, 1));
                     if ($primeraLetra !== 'R') return;
@@ -245,23 +258,57 @@ class AromasListasController extends Controller
                 $fila = [];
                 foreach ($columnasSeleccionadas as $columna) {
                     switch ($columna) {
-                        case 'Folio': $fila['Folio'] = $folio; break;
-                        case 'SKU': $fila['SKU'] = $skuCrudo; break;
-                        case 'Descripcion': $fila['Descripcion'] = $descripcion; break;
-                        case 'Existencia': $fila['Existencia'] = $existencia; break;
-                        case 'PG': $fila['PG'] = round($pg, 2); break;
-                        case 'Bronce': $fila['Bronce'] = round($pg * $multiplicadores['bronce'], 2); break;
-                        case 'Plata': $fila['Plata'] = round($pg * $multiplicadores['plata'], 2); break;
-                        case 'Oro': $fila['Oro'] = round($pg * $multiplicadores['oro'], 2); break;
-                        case 'Diamante': $fila['Diamante'] = round($pg * $multiplicadores['diamante'], 2); break;
-                        case 'Lista3': $fila['Lista3'] = round($pg * $multiplicadores['lista3'], 2); break;
-                        case 'Lista4': $fila['Lista4'] = round($pg * $multiplicadores['lista4'], 2); break;
-                        case 'ListaBoutique': $fila['Lista Boutique'] = round($pg * $multiplicadores['boutique'], 2); break; 
-                        case 'Plataformas': $fila['Plataformas'] = round($pg * $multiplicadores['plataformas'], 2); break;
-                        case 'CostoWizerp': $fila['Costo (Wizerp)'] = round($costoWizerp, 2); break;
-                        case 'CostoCalculado': $fila['Costo (Calculado)'] = round($pg > 0 ? $pg / $multiplicadores['divisor_costo'] : 0.0, 2); break;
-                        case 'Almacen': $fila['Almacen'] = $almacen; break;
-                        case 'Marca': $fila['Marca'] = $marca; break;
+                        case 'Folio':
+                            $fila['Folio'] = $folio;
+                            break;
+                        case 'SKU':
+                            $fila['SKU'] = $skuCrudo;
+                            break;
+                        case 'Descripcion':
+                            $fila['Descripcion'] = $descripcion;
+                            break;
+                        case 'Existencia':
+                            $fila['Existencia'] = $existencia;
+                            break;
+                        case 'PG':
+                            $fila['PG'] = round($pg, 2);
+                            break;
+                        case 'Bronce':
+                            $fila['Bronce'] = round($pg * $multiplicadores['bronce'], 2);
+                            break;
+                        case 'Plata':
+                            $fila['Plata'] = round($pg * $multiplicadores['plata'], 2);
+                            break;
+                        case 'Oro':
+                            $fila['Oro'] = round($pg * $multiplicadores['oro'], 2);
+                            break;
+                        case 'Diamante':
+                            $fila['Diamante'] = round($pg * $multiplicadores['diamante'], 2);
+                            break;
+                        case 'Lista3':
+                            $fila['Lista3'] = round($pg * $multiplicadores['lista3'], 2);
+                            break;
+                        case 'Lista4':
+                            $fila['Lista4'] = round($pg * $multiplicadores['lista4'], 2);
+                            break;
+                        case 'ListaBoutique':
+                            $fila['Lista Boutique'] = round($pg * $multiplicadores['boutique'], 2);
+                            break;
+                        case 'Plataformas':
+                            $fila['Plataformas'] = round($pg * $multiplicadores['plataformas'], 2);
+                            break;
+                        case 'CostoWizerp':
+                            $fila['Costo (Wizerp)'] = round($costoWizerp, 2);
+                            break;
+                        case 'CostoCalculado':
+                            $fila['Costo (Calculado)'] = round($pg > 0 ? $pg / $multiplicadores['divisor_costo'] : 0.0, 2);
+                            break;
+                        case 'Almacen':
+                            $fila['Almacen'] = $almacen;
+                            break;
+                        case 'Marca':
+                            $fila['Marca'] = $marca;
+                            break;
                     }
                 }
                 $listaCompleta[] = $fila;
@@ -278,7 +325,7 @@ class AromasListasController extends Controller
         if (count($inconsistencias) > 0) {
             $tempFilename = 'excel_temp_' . uniqid() . '.xlsx';
             $tempDir = storage_path('app/temp');
-            
+
             if (!file_exists($tempDir)) {
                 mkdir($tempDir, 0755, true);
             }
@@ -338,5 +385,36 @@ class AromasListasController extends Controller
         } finally {
             if (file_exists($rutaCompleta)) unlink($rutaCompleta);
         }
+    }
+
+    public function obtenerConfiguracion()
+    {
+        $settings = DB::table('gelia_settings')->pluck('value', 'key');
+        return response()->json($settings);
+    }
+
+    public function guardarConfiguracion(Request $request)
+    {
+        $configuraciones = $request->except('_token');
+
+        foreach ($configuraciones as $key => $value) {
+            // Verificamos si existe para actualizar o insertar con timestamps correctos
+            $existe = DB::table('gelia_settings')->where('key', $key)->exists();
+
+            if ($existe) {
+                DB::table('gelia_settings')
+                    ->where('key', $key)
+                    ->update(['value' => $value, 'updated_at' => now()]);
+            } else {
+                DB::table('gelia_settings')->insert([
+                    'key' => $key,
+                    'value' => $value,
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
+            }
+        }
+
+        return response()->json(['message' => 'Configuración global actualizada']);
     }
 }
