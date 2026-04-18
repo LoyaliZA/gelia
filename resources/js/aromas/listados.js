@@ -11,9 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('input[type="file"]').forEach(input => {
         input.addEventListener('change', window.verificarArchivos);
     });
-    
+
     window.verificarArchivos();
-    
+
     const formCrear = document.getElementById('form-crear-lista');
     if (formCrear) formCrear.addEventListener('submit', guardarNuevaLista);
 });
@@ -39,7 +39,7 @@ window.abrirModalCrear = function () {
     });
     document.getElementById('check-solo-existencia').checked = false;
     document.getElementById('input-columnas-exportar').value = '';
-    document.getElementById('check-filtro-relojes').checked = false; 
+    document.getElementById('check-filtro-relojes').checked = false;
     toggleModal(true);
 }
 
@@ -84,6 +84,40 @@ window.abrirModalEdicion = function (event, id) {
 
     toggleModal(true);
 }
+
+// Valores por defecto como salvaguarda
+const configDescuentosDefault = {
+    bronce: 12.39, plata: 14.14, oro: 15.89,
+    diamante: 17.65, lista3: 14.28, lista4: 17.71
+};
+
+window.abrirModalConfiguracion = function () {
+    const config = JSON.parse(localStorage.getItem('gelia_config_descuentos')) || configDescuentosDefault;
+
+    Object.keys(config).forEach(key => {
+        const input = document.getElementById(`input-pct-${key}`);
+        if (input) input.value = config[key];
+    });
+
+    document.getElementById('modal-configuracion').classList.remove('hidden');
+};
+
+window.cerrarModalConfiguracion = function () {
+    document.getElementById('modal-configuracion').classList.add('hidden');
+};
+
+window.guardarConfiguracionDescuentos = function () {
+    const nuevaConfig = {};
+
+    Object.keys(configDescuentosDefault).forEach(key => {
+        const inputVal = document.getElementById(`input-pct-${key}`).value;
+        nuevaConfig[key] = parseFloat(inputVal) || configDescuentosDefault[key];
+    });
+
+    localStorage.setItem('gelia_config_descuentos', JSON.stringify(nuevaConfig));
+    window.cerrarModalConfiguracion();
+    window.mostrarToast("Configuración de descuentos actualizada exitosamente.", "green");
+};
 
 // ==========================================
 // ORDENAMIENTO DE COLUMNAS
@@ -165,7 +199,7 @@ window.guardarNuevaLista = async function (e) {
 
     const form = e.target;
     const formData = new FormData(form);
-    
+
     // EXTRACCIÓN EXPLÍCITA DE BOOLEANOS: Garantiza que siempre se envíen '1' o '0'
     formData.set('solo_con_existencia', document.getElementById('check-solo-existencia').checked ? '1' : '0');
     formData.set('filtro_relojes', document.getElementById('check-filtro-relojes').checked ? '1' : '0');
@@ -243,7 +277,7 @@ window.procesarSolicitud = async function (tipo) {
     else if (listasDefault[tipo]) {
         if (tipo !== 'costos' && !tienePrecios) { window.mostrarToast("Esta lista requiere: Existencias + Precios", "red"); return; }
         if (tipo === 'costos' && !tieneCostos) { window.mostrarToast("Esta lista requiere: Existencias + Costos", "red"); return; }
-        
+
         // Comprobación de persistencia local para listas editadas (Flexibilidad sin BD)
         const storageCol = localStorage.getItem('cfg_lista_' + tipo);
         columnas = storageCol ? JSON.parse(storageCol) : listasDefault[tipo];
@@ -263,6 +297,13 @@ window.procesarSolicitud = async function (tipo) {
     if (columnas.length > 0) formData.append('orden_final', columnas.join(','));
     formData.append('tipo_lista', tipo);
 
+    // --- NUEVO: Inyectar descuentos desde LocalStorage ---
+    const configDesc = JSON.parse(localStorage.getItem('gelia_config_descuentos')) || configDescuentosDefault;
+    Object.keys(configDesc).forEach(key => {
+        formData.append(`pct_${key}`, configDesc[key]);
+    });
+
+
     window.mostrarCarga(`Generando: ${nombreTipo}...`);
     document.getElementById('alertas').innerHTML = '';
 
@@ -274,9 +315,9 @@ window.procesarSolicitud = async function (tipo) {
             method: 'POST',
             body: formData,
             credentials: 'same-origin', // Prevención de CORS/Tailscale 419
-            headers: { 
-                'X-CSRF-TOKEN': tokenCSRF, 
-                'Accept': 'application/json' 
+            headers: {
+                'X-CSRF-TOKEN': tokenCSRF,
+                'Accept': 'application/json'
             }
         });
 
@@ -294,7 +335,7 @@ window.procesarSolicitud = async function (tipo) {
 
         if (contentType && contentType.includes("application/json")) {
             const data = await response.json();
-            
+
             if (!response.ok) {
                 if (data.errors) {
                     let html = `<ul class='list-disc ml-5'>`;
@@ -302,7 +343,7 @@ window.procesarSolicitud = async function (tipo) {
                     html += `</ul>`;
                     window.mostrarError(html);
                 } else { throw new Error(data.error || 'Error en el servidor'); }
-                window.ocultarCarga(); 
+                window.ocultarCarga();
                 return;
             }
 
@@ -343,7 +384,7 @@ window.eliminarLista = async function (event, id) {
     event.stopPropagation();
     if (!confirm("Eliminar esta lista personalizada?")) return;
     window.mostrarCarga("Eliminando...");
-    
+
     const tokenCSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('input[name="_token"]')?.value;
 
     try {
@@ -352,7 +393,7 @@ window.eliminarLista = async function (event, id) {
             method: 'DELETE',
             headers: { 'X-CSRF-TOKEN': tokenCSRF, 'Accept': 'application/json' }
         });
-        if (response.ok) { window.mostrarToast("Eliminada.", "green"); setTimeout(() => window.location.reload(), 1000); } 
+        if (response.ok) { window.mostrarToast("Eliminada.", "green"); setTimeout(() => window.location.reload(), 1000); }
         else { window.mostrarToast("Error al eliminar.", "red"); }
     } catch (error) { window.mostrarToast("Error de red.", "red"); } finally { window.ocultarCarga(); }
 }
@@ -366,7 +407,7 @@ window.mostrarModalInconsistencias = function (inconsistencias, tempFile, nombre
         console.error("El contenedor 'tabla-inconsistencias-body' no existe en el DOM.");
         return;
     }
-    
+
     tbody.innerHTML = '';
 
     inconsistencias.forEach(item => {
@@ -414,7 +455,7 @@ window.copiarTablaInconsistencias = function () {
     if (!tbody) return;
 
     let texto = "SKU\tDESCRIPCION\tALMACEN\tEXISTENCIA\n";
-    
+
     Array.from(tbody.rows).forEach(row => {
         const sku = row.cells[0].innerText;
         const desc = row.cells[1].innerText;

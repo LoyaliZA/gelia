@@ -163,6 +163,38 @@
     </div>
 </div>
 
+<div id="modal-configuracion" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-dark-800 border border-dark-700 w-full max-w-4xl rounded-xl shadow-2xl">
+        <div class="p-6 border-b border-dark-700 flex justify-between items-center bg-dark-900 rounded-t-xl">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span class="bg-blue-500 w-2 h-6 rounded"></span> Configuración Global de Descuentos (%)
+            </h2>
+            <button onclick="cerrarModalConfiguracion()" class="text-gray-400 hover:text-white text-2xl transition">&times;</button>
+        </div>
+        
+        <div class="p-6">
+            <p class="text-sm text-dark-muted mb-6">Estos valores se guardarán automáticamente en tu navegador y se aplicarán a todas las listas generadas que utilicen estos campos.</p>
+            
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                @foreach(['bronce' => 12.39, 'plata' => 14.14, 'oro' => 15.89, 'diamante' => 17.65, 'lista3' => 14.28, 'lista4' => 17.71] as $key => $val)
+                <div>
+                    <label class="block text-xs font-bold text-gray-300 mb-1 uppercase">{{ $key }}</label>
+                    <div class="flex items-center">
+                        <input type="number" step="0.01" id="input-pct-{{ $key }}" class="w-full bg-dark-900 border border-dark-700 rounded-l p-2 text-white focus:border-blue-500 outline-none text-center font-mono">
+                        <span class="bg-dark-700 text-dark-muted px-3 py-2 rounded-r border border-l-0 border-dark-700 text-sm font-bold">%</span>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+
+        <div class="p-4 border-t border-dark-700 flex justify-end gap-3 bg-dark-900 rounded-b-xl">
+            <button type="button" onclick="cerrarModalConfiguracion()" class="px-4 py-2 text-dark-muted hover:text-white transition text-sm">Cancelar</button>
+            <button type="button" onclick="guardarConfiguracionDescuentos()" class="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg transition text-sm">Guardar Cambios</button>
+        </div>
+    </div>
+</div>
+
 <header class="flex items-center justify-between mb-8 pb-6">
     <div>
         <h1 class="text-3xl font-extrabold text-white tracking-tight">
@@ -170,9 +202,18 @@
         </h1>
         <p class="text-dark-muted mt-1 text-sm font-medium">Gestión de resurtidos, costos y generación de listas maestras.</p>
     </div>
-    <button onclick="abrirModalCrear()" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 text-aromas-main px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-lg">
-        <span>+</span> Crear Nueva Lista
-    </button>
+    <div class="flex flex-col sm:flex-row items-center gap-3">
+        <button type="button" onclick="abrirModalConfiguracion()" class="bg-dark-900 hover:bg-dark-800 border border-dark-700 text-gray-300 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-lg">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            Configuración
+        </button>
+        <button onclick="abrirModalCrear()" class="bg-dark-800 hover:bg-dark-700 border border-dark-700 text-aromas-main px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition shadow-lg">
+            <span>+</span> Crear Nueva Lista
+        </button>
+    </div>
 </header>
 
 <div id="alertas"></div>
@@ -180,22 +221,7 @@
 <form id="form-principal" enctype="multipart/form-data">
     @csrf
 
-    <div class="bg-dark-900 border border-dark-700 rounded-xl p-5 mb-8 shadow-lg">
-        <h2 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <span class="bg-blue-500 w-2 h-4 rounded"></span> Configuración de Descuentos (%)
-        </h2>
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4">
-            @foreach(['bronce' => 12.39, 'plata' => 14.14, 'oro' => 15.89, 'diamante' => 17.65, 'lista3' => 14.28, 'lista4' => 17.71] as $key => $val)
-            <div>
-                <label class="block text-xs font-bold text-dark-muted mb-1 uppercase">{{ $key }}</label>
-                <div class="flex items-center">
-                    <input type="number" step="0.01" name="pct_{{ $key }}" value="{{ $val }}" class="w-full bg-dark-800 border border-dark-700 rounded-l p-2 text-white focus:border-aromas-main outline-none text-sm text-center">
-                    <span class="bg-dark-700 text-dark-muted px-2 py-2 rounded-r border border-l-0 border-dark-700 text-sm">%</span>
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
+    
 
     <h2 class="text-xl font-bold text-white mb-4 flex items-center">
         <span class="bg-aromas-main w-2 h-6 rounded mr-2"></span> Zona de Carga Principal
