@@ -152,14 +152,16 @@ Route::prefix('contabilidad')->middleware('auth')->group(function () {
     Route::delete('/eliminar-pedido/{id}', [ContabilidadController::class, 'eliminarPedido'])->name('contabilidad.eliminar-pedido');
     Route::post('/actualizar-comisiones', [ContabilidadController::class, 'actualizarComisiones'])->name('contabilidad.actualizar-comisiones');
     Route::put('/actualizar-pedido/{id}', [ContabilidadController::class, 'actualizarPedidoRapido'])->name('contabilidad.actualizar-pedido');
-    //Carga masiva de pedidos desde Excel (similar a la función procesarLista pero con validaciones específicas para pedidos)
     Route::get('/descargar-plantilla', [ContabilidadController::class, 'descargarPlantilla'])->name('contabilidad.descargar-plantilla');
     Route::post('/importar-historico', [ContabilidadController::class, 'importarHistorico'])->name('contabilidad.importar-historico');
     Route::get('/exportar-reporte', [ContabilidadController::class, 'exportarReporte'])->name('contabilidad.exportar-reporte');
-    // Dashboard Avanzado API
     Route::get('/dashboard-data', [\App\Http\Controllers\ContabilidadController::class, 'getDashboardData'])->name('contabilidad.dashboard-data');
     Route::post('/generar-pdf', [ContabilidadController::class, 'generarReportePDF'])->name('contabilidad.generar-pdf');
+    
     // Módulo de Retiros y Facturación
-Route::get('/retiros', [ContabilidadController::class, 'gestionRetiros'])->name('contabilidad.retiros');
-Route::post('/confirmar-lote', [ContabilidadController::class, 'confirmarLote'])->name('contabilidad.confirmar-lote');
+    Route::get('/retiros', [ContabilidadController::class, 'gestionRetiros'])->name('contabilidad.retiros');
+    Route::post('/confirmar-lote', [ContabilidadController::class, 'confirmarLote'])->name('contabilidad.confirmar-lote');
+    
+    // --> ESTA ES LA LÍNEA QUE FALTA AGREGAR <--
+    Route::post('/confirmar-individual/{id}', [ContabilidadController::class, 'confirmarIndividual'])->name('contabilidad.confirmar-individual');
 });

@@ -349,138 +349,10 @@
 
 </div>
 
-<dialog id="modalComisiones" class="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl p-6 backdrop:bg-dark-900/80 w-full max-w-sm m-auto">
-    <div class="flex justify-between items-center mb-4 border-b border-dark-700 pb-2">
-        <h3 class="text-lg font-bold text-white">Comisiones</h3>
-        <button onclick="document.getElementById('modalComisiones').close()" class="text-dark-muted hover:text-white material-symbols-outlined transition-colors">close</button>
-    </div>
-    <form id="formUpdateComisiones" class="space-y-4">
-        @foreach($platforms as $plat)
-        <div class="flex justify-between items-center bg-dark-900 p-2 rounded border border-dark-700">
-            <label class="text-sm text-white">{{ $plat->name }}</label>
-            <div class="flex items-center gap-1">
-                <input type="number" step="0.01" value="{{ $plat->commission_percent }}"
-                    class="input-config-comision w-20 bg-dark-800 border border-dark-700 rounded px-2 py-1.5 text-white text-sm text-right outline-none focus:border-bella-main"
-                    data-id="{{ $plat->id }}">
-                <span class="text-xs text-dark-muted">%</span>
-            </div>
-        </div>
-        @endforeach
-        <button type="submit" class="w-full bg-bella-main hover:bg-red-700 text-white py-2.5 rounded font-bold text-sm mt-4 transition-colors">Guardar Configuración</button>
-    </form>
-</dialog>
-
-<dialog id="modalDetalles" class="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl p-6 backdrop:bg-dark-900/80 w-full max-w-lg m-auto">
-    <div class="flex justify-between items-center mb-4 border-b border-dark-700 pb-2">
-        <h3 class="text-lg font-bold text-white">Productos del Pedido: <span id="detalles_num_pedido" class="text-bella-main"></span></h3>
-        <button onclick="document.getElementById('modalDetalles').close()" class="text-dark-muted hover:text-white material-symbols-outlined transition-colors">close</button>
-    </div>
-    <div class="overflow-y-auto max-h-[300px] custom-scrollbar">
-        <table class="w-full text-left text-sm">
-            <thead class="text-dark-muted border-b border-dark-700">
-                <tr>
-                    <th class="py-2">SKU</th>
-                    <th class="py-2">Producto</th>
-                    <th class="py-2 text-center">Pzas</th>
-                    <th class="py-2 text-right">Precio Unit.</th>
-                </tr>
-            </thead>
-            <tbody id="tabla_detalles_body" class="text-white divide-y divide-dark-700/50">
-            </tbody>
-        </table>
-    </div>
-</dialog>
-<dialog id="modalEditar" class="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl p-6 backdrop:bg-dark-900/80 w-full max-w-lg m-auto">
-    <div class="flex justify-between items-center mb-4 border-b border-dark-700 pb-2">
-        <h3 class="text-lg font-bold text-white">Corregir Pedido: <span id="edit_num_pedido" class="text-bella-main"></span></h3>
-        <button onclick="document.getElementById('modalEditar').close()" class="text-dark-muted hover:text-white material-symbols-outlined transition-colors">close</button>
-    </div>
-    <form id="formEditarPedido" class="space-y-4">
-        <input type="hidden" id="edit_id">
-        <div class="grid grid-cols-2 gap-4">
-            <div>
-                <label class="block text-xs text-dark-muted mb-1">Transacción</label>
-                <select id="edit_tipo" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none">
-                    <option value="venta">Venta Normal</option>
-                    <option value="reembolso">Reembolso</option>
-                    <option value="contracargo">Contracargo</option>
-                </select>
-            </div>
-            <div class="col-span-2 mb-3">
-                <label class="block text-xs text-dark-muted mb-1">Nombre del Cliente</label>
-                <input type="text" id="edit_cliente" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none" required>
-            </div>
-            <div>
-                <label class="block text-xs text-dark-muted mb-1">Plataforma</label>
-                <select id="edit_plataforma" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none">
-                    @foreach($platforms as $plat)
-                    <option value="{{ $plat->id }}">{{ $plat->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-        </div>
-        <div class="grid grid-cols-3 gap-3">
-            <div>
-                <label class="block text-xs text-dark-muted mb-1">Venta Total</label>
-                <input type="number" step="0.01" id="edit_venta" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
-            </div>
-            <div>
-                <label class="block text-xs text-dark-muted mb-1">Costo Envío</label>
-                <input type="number" step="0.01" id="edit_envio" class="w-full bg-dark-900 border border-dark-700 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
-            </div>
-            <div>
-                <label class="block text-xs text-bella-main mb-1">Com. Cobrada</label>
-                <input type="number" step="0.01" id="edit_comision" class="w-full bg-dark-900 border border-bella-main/50 rounded px-2 py-1.5 text-white text-sm outline-none text-right" required>
-            </div>
-        </div>
-
-        <div class="mt-3 flex items-center bg-dark-900 p-2 rounded border border-dark-700">
-            <label class="flex items-center cursor-pointer w-full">
-                <input type="checkbox" id="edit_envio_pagado_cliente" class="form-checkbox h-4 w-4 text-bella-main rounded border-dark-600 bg-dark-800">
-                <span class="ml-2 text-sm text-white font-semibold">El Cliente Pagó el Envío</span>
-            </label>
-        </div>
-        <div class="mt-4 border-t border-dark-700 pt-3">
-            <label class="block text-xs font-bold text-white uppercase mb-2">Ajustar Cantidad de Productos</label>
-            <div id="edit_productos_container" class="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
-            </div>
-            <p class="text-[10px] text-dark-muted mt-1 italic">*El precio unitario original se mantiene y el subtotal se calculará automáticamente.</p>
-        </div>
-
-        <div class="mt-4 border-t border-dark-700 pt-3">
-            <label class="block text-xs font-bold text-white uppercase mb-2">Ajustar Cantidad de Productos</label>
-            <div id="edit_productos_container" class="space-y-2 max-h-[150px] overflow-y-auto custom-scrollbar">
-            </div>
-            <p class="text-[10px] text-dark-muted mt-1 italic">*El precio unitario original se mantiene y el subtotal se calculará automáticamente.</p>
-        </div>
-
-        <div class="flex justify-end pt-2">
-            <button type="submit" class="bg-yellow-600 hover:bg-yellow-500 text-white font-bold py-2 px-6 rounded transition-colors text-sm">Actualizar Registro</button>
-        </div>
-    </form>
-</dialog>
-
-<dialog id="modalConfirmarRetiro" class="bg-dark-800 border border-dark-700 rounded-xl shadow-2xl p-6 backdrop:bg-dark-900/80 w-full max-w-sm m-auto">
-    <div class="flex justify-between items-center mb-4 border-b border-dark-700 pb-2">
-        <h3 class="text-lg font-bold text-white">Confirmar Pago: <span id="conf_num_pedido" class="text-bella-main"></span></h3>
-        <button onclick="document.getElementById('modalConfirmarRetiro').close()" class="text-dark-muted hover:text-white material-symbols-outlined transition-colors">close</button>
-    </div>
-    <form id="formConfirmarRetiro" class="space-y-4">
-        <input type="hidden" id="conf_id">
-        <div>
-            <label class="block text-xs text-dark-muted mb-1">Monto Real Recibido en Banco ($)</label>
-            <input type="number" step="0.01" id="conf_monto" class="w-full bg-dark-900 border border-dark-600 rounded px-3 py-2 text-white outline-none focus:border-green-500 font-bold text-lg text-right" required>
-            <p class="text-[10px] text-dark-muted mt-1">Esperado por plataforma: <span id="conf_esperado" class="font-bold text-white"></span></p>
-        </div>
-        <div>
-            <label class="block text-xs text-dark-muted mb-1">Fecha de Ingreso a Banco</label>
-            <input type="date" id="conf_fecha" required class="w-full bg-dark-900 border border-dark-600 rounded px-3 py-2 text-white text-sm outline-none focus:border-green-500 [color-scheme:dark]" value="{{ date('Y-m-d') }}">
-        </div>
-        <button type="submit" id="btnConfIndividual" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2.5 rounded transition-colors shadow-lg shadow-green-600/20">
-            Guardar y Transferir a Neta
-        </button>
-    </form>
-</dialog>
+@include('contabilidad.modals.comisiones')
+@include('contabilidad.modals.detalles')
+@include('contabilidad.modals.editar')
+@include('contabilidad.modals.confirmar_retiro')
 
 @include('contabilidad.partials.dashboard')
 
@@ -495,7 +367,6 @@
             guardarPedido: "{{ route('contabilidad.guardar-pedido') }}",
             updateComisiones: "{{ route('contabilidad.actualizar-comisiones') }}",
             actualizarPedidoBase: "{{ url('/contabilidad/actualizar-pedido') }}",
-            // NUEVA RUTA PARA EL DASHBOARD
             dashboardData: "{{ url('/contabilidad/dashboard-data') }}"
         },
         graficaData: @json($datosGrafica),
