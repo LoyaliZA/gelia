@@ -157,11 +157,14 @@ Route::prefix('contabilidad')->middleware('auth')->group(function () {
     Route::get('/exportar-reporte', [ContabilidadController::class, 'exportarReporte'])->name('contabilidad.exportar-reporte');
     Route::get('/dashboard-data', [\App\Http\Controllers\ContabilidadController::class, 'getDashboardData'])->name('contabilidad.dashboard-data');
     Route::post('/generar-pdf', [ContabilidadController::class, 'generarReportePDF'])->name('contabilidad.generar-pdf');
-    
+
     // Módulo de Retiros y Facturación
     Route::get('/retiros', [ContabilidadController::class, 'gestionRetiros'])->name('contabilidad.retiros');
     Route::post('/confirmar-lote', [ContabilidadController::class, 'confirmarLote'])->name('contabilidad.confirmar-lote');
-    
+
     // --> ESTA ES LA LÍNEA QUE FALTA AGREGAR <--
     Route::post('/confirmar-individual/{id}', [ContabilidadController::class, 'confirmarIndividual'])->name('contabilidad.confirmar-individual');
+
+    Route::get('/historial-pagos', [ContabilidadController::class, 'historialAutorizados'])->name('contabilidad.historial');
+    Route::post('/edicion-emergencia/{id}', [ContabilidadController::class, 'procesarEdicionEmergencia'])->name('contabilidad.edicion-emergencia');
 });

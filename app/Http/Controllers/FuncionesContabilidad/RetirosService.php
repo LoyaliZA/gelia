@@ -42,7 +42,9 @@ class RetirosService
                 return 'Periodo ' . $fecha->format('F Y');
             });
 
-            $grupos = $grupos->sortKeys();
+            $grupos = $grupos->sortBy(function ($pedidosEnGrupo) {
+                return $pedidosEnGrupo->min('fecha_salida');
+            });
 
             $datosPlataformas[] = [
                 'plataforma' => $plat,

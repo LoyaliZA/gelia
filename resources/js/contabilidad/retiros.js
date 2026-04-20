@@ -3,7 +3,7 @@
  * Descripción: Maneja pestañas, cálculos, búsqueda y Drag & Drop nativo HTML5.
  */
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     let platActivaId = document.querySelector('.tab-content:not(.hidden)')?.dataset.platId;
     let montoEsperadoActual = 0;
 
@@ -28,10 +28,10 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.style.borderColor = color;
             btn.style.color = color;
             btn.classList.replace('inactivo', 'activo');
-            
+
             const content = document.getElementById(btn.dataset.target);
             content.classList.remove('hidden');
-            
+
             platActivaId = content.dataset.platId;
             document.getElementById('buscadorRetiros').value = '';
             filtrarTabla('');
@@ -44,14 +44,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // ==========================================
     const buscador = document.getElementById('buscadorRetiros');
     if (buscador) {
-        buscador.addEventListener('input', function() {
+        buscador.addEventListener('input', function () {
             filtrarTabla(this.value.toLowerCase().trim());
         });
     }
 
     function filtrarTabla(query) {
         const contentActivo = document.getElementById(`tab-${platActivaId}`);
-        if(!contentActivo) return;
+        if (!contentActivo) return;
 
         contentActivo.querySelectorAll('.row-draggable').forEach(row => {
             const texto = row.dataset.filtro || '';
@@ -63,28 +63,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // 3. CHECKBOXES Y BOTÓN MÁGICO (CARGAR GRUPO)
     // ==========================================
     document.querySelectorAll('.check-grupo-all').forEach(checkGroup => {
-        checkGroup.addEventListener('change', function() {
+        checkGroup.addEventListener('change', function () {
             const tbody = this.closest('table').querySelector('tbody');
             tbody.querySelectorAll('.check-pedido').forEach(chk => {
-                if(chk.closest('tr').style.display !== 'none') chk.checked = this.checked;
+                if (chk.closest('tr').style.display !== 'none') chk.checked = this.checked;
             });
             calcularResumen();
         });
     });
 
     document.querySelectorAll('.btn-cargar-grupo').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function () {
             const content = document.getElementById(`tab-${platActivaId}`);
             content.querySelectorAll('.check-pedido, .check-grupo-all').forEach(c => c.checked = false);
-            
+
             const grupoContainer = this.closest('.grupo-lote');
             grupoContainer.querySelectorAll('.check-pedido').forEach(chk => {
-                if(chk.closest('tr').style.display !== 'none') chk.checked = true;
+                if (chk.closest('tr').style.display !== 'none') chk.checked = true;
             });
             grupoContainer.querySelector('.check-grupo-all').checked = true;
-            
+
             calcularResumen();
-            
+
             const originalText = this.innerHTML;
             this.innerHTML = '<span class="material-symbols-outlined text-[14px] mr-1">done_all</span> Cargado al Panel';
             setTimeout(() => this.innerHTML = originalText, 1500);
@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let scrollInterval = null;
 
     document.addEventListener('dragstart', e => {
-        if(e.target.classList.contains('row-draggable')) {
+        if (e.target.classList.contains('row-draggable')) {
             draggedRow = e.target;
             e.target.classList.add('opacity-50', 'bg-dark-700');
             e.dataTransfer.effectAllowed = 'move';
@@ -111,7 +111,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     document.addEventListener('dragend', e => {
-        if(draggedRow) {
+        if (draggedRow) {
             draggedRow.classList.remove('opacity-50', 'bg-dark-700');
             draggedRow = null;
         }
@@ -135,11 +135,11 @@ document.addEventListener('DOMContentLoaded', function() {
         tbody.addEventListener('drop', e => {
             e.preventDefault();
             tbody.classList.remove('ring-2', 'ring-bella-main', 'bg-dark-800/50');
-            
-            if(draggedRow && draggedRow.parentNode !== tbody) {
+
+            if (draggedRow && draggedRow.parentNode !== tbody) {
                 // Mover el elemento en el DOM
                 tbody.appendChild(draggedRow);
-                
+
                 // Actualizar contadores visuales de los grupos afectados
                 actualizarContadoresGrupos();
                 calcularResumen();
@@ -154,7 +154,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const rect = scrollContainer.getBoundingClientRect();
 
         clearInterval(scrollInterval);
-        
+
         if (e.clientY - rect.top < threshold) {
             scrollInterval = setInterval(() => scrollContainer.scrollTop -= speed, 20);
         } else if (rect.bottom - e.clientY < threshold) {
@@ -179,14 +179,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function calcularResumen() {
         const tablaActiva = document.getElementById(`tab-${platActivaId}`);
-        if(!tablaActiva) return;
+        if (!tablaActiva) return;
 
         let seleccionados = 0;
         let sumEsperado = 0;
         let htmlDesglose = '';
 
         tablaActiva.querySelectorAll('.check-pedido:checked').forEach(chk => {
-            if(chk.closest('tr').style.display !== 'none') {
+            if (chk.closest('tr').style.display !== 'none') {
                 seleccionados++;
                 const esperado = parseFloat(chk.dataset.esperado);
                 const numPedido = chk.dataset.numpedido;
@@ -210,8 +210,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         document.getElementById('resumen_cantidad').innerText = seleccionados;
-        document.getElementById('resumen_esperado').innerText = '$' + sumEsperado.toLocaleString('es-MX', {minimumFractionDigits:2});
-        
+        document.getElementById('resumen_esperado').innerText = '$' + sumEsperado.toLocaleString('es-MX', { minimumFractionDigits: 2 });
+
         if (seleccionados > 0) {
             contenedorDesglose.innerHTML = htmlDesglose;
             document.getElementById('btnProcesarLote').disabled = false;
@@ -235,15 +235,15 @@ document.addEventListener('DOMContentLoaded', function() {
         contenedorDesglose.querySelectorAll('.conf-monto').forEach(input => {
             sumaReal += parseFloat(input.value) || 0;
         });
-        resumenTotalReal.innerText = '$' + sumaReal.toLocaleString('es-MX', {minimumFractionDigits:2});
+        resumenTotalReal.innerText = '$' + sumaReal.toLocaleString('es-MX', { minimumFractionDigits: 2 });
     }
 
     // ==========================================
     // 6. ENVIAR A BACKEND (NUEVO PAYLOAD ARRAY)
     // ==========================================
-    document.getElementById('formConfirmarLote').addEventListener('submit', async function(e) {
+    document.getElementById('formConfirmarLote').addEventListener('submit', async function (e) {
         e.preventDefault();
-        
+
         // Recopilar el array de objetos individuales
         let pedidosPayload = [];
         contenedorDesglose.querySelectorAll('.item-confirmacion').forEach(item => {
@@ -268,14 +268,50 @@ document.addEventListener('DOMContentLoaded', function() {
                     fecha_deposito: document.getElementById('input_fecha_banco').value
                 })
             }).then(r => r.json());
-            
-            if(res.success) window.location.reload();
+
+            if (res.success) window.location.reload();
             else throw new Error(res.message);
-        } catch(err) {
+        } catch (err) {
             alert('Error: ' + err.message);
             btn.disabled = false; btn.innerHTML = '<span class="material-symbols-outlined mr-2">task_alt</span> Aprobar Retiro';
         }
     });
 
     calcularResumen();
+
+
+    // ==========================================
+    // NUEVO: ORDENAMIENTO POR FECHAS (ASC / DESC)
+    // ==========================================
+    const btnOrdenar = document.getElementById('btnOrdenarRetiros');
+    let ordenAscendente = true; // Por defecto el backend manda los más antiguos primero
+
+    if (btnOrdenar) {
+        btnOrdenar.addEventListener('click', function () {
+            ordenAscendente = !ordenAscendente; // Invertimos el estado
+
+            // Actualizamos la UI del botón
+            document.getElementById('iconOrden').innerText = ordenAscendente ? 'arrow_downward' : 'arrow_upward';
+            document.getElementById('textoOrden').innerText = ordenAscendente ? 'Más antiguos' : 'Más recientes';
+
+            // Reordenamos visualmente los elementos en DOM
+            document.querySelectorAll('.tab-content').forEach(content => {
+                // 1. Invertimos el orden de las cajas agrupadoras (Semanas, Quincenas, etc)
+                const grupos = Array.from(content.querySelectorAll('.grupo-lote'));
+                grupos.reverse().forEach(grupo => content.appendChild(grupo));
+
+                // 2. Invertimos el orden de las filas (pedidos) dentro de cada grupo
+                grupos.forEach(grupo => {
+                    const tbody = grupo.querySelector('tbody');
+                    if (tbody) {
+                        const filas = Array.from(tbody.querySelectorAll('tr.row-draggable'));
+                        filas.reverse().forEach(fila => tbody.appendChild(fila));
+                    }
+                });
+            });
+        });
+    }
 });
+
+
+

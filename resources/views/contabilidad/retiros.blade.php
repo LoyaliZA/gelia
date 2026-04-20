@@ -27,6 +27,16 @@ $coloresPlataformas = [
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-dark-muted text-[18px]">search</span>
                 <input type="text" id="buscadorRetiros" placeholder="Buscar pedido o cliente..." class="w-full bg-dark-900 border border-dark-700 rounded-lg pl-9 pr-3 py-1.5 text-white text-sm outline-none focus:ring-1 focus:ring-bella-main transition-all">
             </div>
+            
+            <button id="btnOrdenarRetiros" class="text-sm bg-dark-700 hover:bg-dark-600 text-white px-4 py-1.5 rounded-lg transition-colors border border-dark-600 flex items-center justify-center shadow-md w-full sm:w-auto" title="Invertir orden de fechas">
+                <span class="material-symbols-outlined mr-2 text-[18px]" id="iconOrden">arrow_downward</span> 
+                <span id="textoOrden">Más antiguos</span>
+            </button>
+
+            <a href="{{ route('contabilidad.historial') }}" class="text-sm bg-dark-700 hover:bg-dark-600 text-white px-4 py-1.5 rounded-lg transition-colors border border-dark-600 flex items-center justify-center shadow-md">
+                <span class="material-symbols-outlined mr-2">history</span> Historial de Pagos
+            </a>
+
             <a href="{{ route('contabilidad.index') }}" class="text-sm bg-dark-700 hover:bg-dark-600 text-white px-4 py-1.5 rounded-lg transition-colors border border-dark-600 flex items-center justify-center shadow-md">
                 <span class="material-symbols-outlined mr-2">arrow_back</span> Volver
             </a>
