@@ -1,5 +1,6 @@
 import './bootstrap';
 
+
 document.addEventListener('DOMContentLoaded', () => {
     // =========================================================
     // DRAG AND DROP UNIVERSAL (Funciona en todos los módulos)
