@@ -119,6 +119,8 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
     Route::get('/api/progreso/{id}', [BellaromaCargaPreciosController::class, 'consultarProgreso'])->name('woocommerce.api.progreso');
     Route::post('/api/carga-masiva', [BellaromaCargaPreciosController::class, 'iniciarCargaMasiva'])->name('woocommerce.api.carga-masiva');
     Route::put('/api/producto/{id}', [BellaromaCargaPreciosController::class, 'actualizarPrecioIndividual'])->name('woocommerce.api.actualizar-individual');
+    // NUEVA RUTA (Usada por el botón azul para consultar)
+    Route::get('/api/producto/{id}', [BellaromaCargaPreciosController::class, 'consultarPrecioIndividual'])->name('woocommerce.api.consultar');
     // Rutas de API para WooCommerce en web.php
     Route::post('/api/previsualizar', [BellaromaCargaPreciosController::class, 'previsualizarCarga'])->name('woocommerce.api.previsualizar');
     // Vista del Centro de Auditoría
@@ -140,6 +142,8 @@ Route::prefix('woocommerce')->middleware('auth')->group(function () {
 
     Route::post('/sync/{id}/reanudar', [BellaromaCargaPreciosController::class, 'reanudarSync'])
         ->name('woocommerce.sync.reanudar');
+
+    
 });
 
 // =========================================================
