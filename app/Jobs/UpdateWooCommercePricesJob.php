@@ -17,19 +17,17 @@ use App\Mail\WooSyncExitoMail;
 use App\Mail\WooSyncFalloMail;
 use Rap2hpoutre\FastExcel\FastExcel;
 
-// CAMBIO NUEVO: Importación del Trait
+// Importación del Trait
 use App\Traits\InteractsWithWooCommerceApi;
 
 class UpdateWooCommercePricesJob implements ShouldQueue
 {
-    // CAMBIO NUEVO: Implementación del Trait en la clase
+    // Implementación del Trait en la clase
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, InteractsWithWooCommerceApi;
 
     protected $syncLogId;
     protected $preciosWizerp;
     
-    // CAMBIO NUEVO: Propiedades $ck y $cs eliminadas por seguridad.
-
     public function __construct($syncLogId, $preciosWizerp)
     {
         $this->syncLogId = $syncLogId;
@@ -110,7 +108,6 @@ class UpdateWooCommercePricesJob implements ShouldQueue
      */
     private function enviarLotesWooCommerce(array $simples, array $variaciones): void
     {
-        // CAMBIO NUEVO: Lectura de la URL base desde la configuración
         $baseUrl = config('services.woocommerce.url') . '/wp-json/wc/v3/products';
 
         if (!empty($simples)) {
@@ -130,13 +127,15 @@ class UpdateWooCommercePricesJob implements ShouldQueue
      */
     private function ejecutarPeticionBatch(string $url, array $datosUpdate): void
     {
-        // CAMBIO NUEVO: Uso del cliente HTTP del Trait y validación centralizada.
+        // Uso del cliente HTTP del Trait.
         $response = $this->getWooClient('GeliaSystem-SyncBot/1.0')
                          ->post($url, ['update' => $datosUpdate]);
 
-        $this->validateSecurityResponse($response);
+        if (!$response->successful()) {
+            throw new \Exception('Error en la API de WooCommerce: ' . $response->body());
+        }
         
-        usleep(500000); // Pausa de 0.5s por lote
+        $this->aplicarLatenciaSegura(); 
     }
 
     // Funciones internas mantenidas sin cambios

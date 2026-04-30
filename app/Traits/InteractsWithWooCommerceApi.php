@@ -8,24 +8,30 @@ use Illuminate\Http\Client\PendingRequest;
 trait InteractsWithWooCommerceApi
 {
     /**
-     * CAMBIO NUEVO: Centralización de la configuración del cliente HTTP.
-     * Reemplaza la instanciación manual en cada Job y lee credenciales seguras.
+     * Construye un cliente HTTP configurado para evadir falsos positivos en Firewalls (WAF).
+     * Mantiene la autenticación nativa y agrega reintentos automáticos.
      */
     protected function getWooClient(string $botName = 'GeliaSystem-Bot/1.0'): PendingRequest
     {
         return Http::withHeaders([
-            'User-Agent' => $botName,
-            'Accept'     => 'application/json',
+            'User-Agent'       => $botName,
+            'Accept'           => 'application/json',
+            'X-Requested-With' => 'XMLHttpRequest',
+            'Connection'       => 'keep-alive'
         ])
         ->withBasicAuth(
             config('services.woocommerce.key'), 
             config('services.woocommerce.secret')
         )
-        ->timeout(60);
+        ->timeout(60)
+        ->retry(3, 1500, function ($exception, $request) {
+            // Reintenta automáticamente si el WAF responde con un 429 (Too Many Requests) antes del validateSecurityResponse
+            return $exception->response && $exception->response->status() === 429;
+        });
     }
 
     /**
-     * CAMBIO NUEVO: Centralización de la validación de bloqueos (Cloudflare).
+     * Centralización de la validación de bloqueos (Cloudflare).
      * Se invoca después de cada petición para abortar si hay códigos de error de WAF.
      */
     protected function validateSecurityResponse($response): void
@@ -39,5 +45,15 @@ trait InteractsWithWooCommerceApi
         if (!$response->successful()) {
             throw new \Exception("Error de red o de API: " . $response->body());
         }
+    }
+
+    /**
+     * Controlador de latencia dinámica para Jobs.
+     * Mantiene una cadencia segura de peticiones por minuto.
+     */
+    protected function aplicarLatenciaSegura(): void
+    {
+        // 500,000 microsegundos = 0.5 segundos de pausa técnica
+        usleep(500000); 
     }
 }

@@ -147,6 +147,38 @@ window.sincronizarCatalogo = async () => {
     }
 };
 
+// 3.1 Sincronización de Precios Locales (Gelia -> WooCommerce)
+window.sincronizarPreciosLocales = async () => {
+    const inputCsv = document.getElementById('archivo-precios-locales');
+    const tokenInput = document.querySelector('input[name="_token"]');
+
+    if (!inputCsv || !inputCsv.files.length) {
+        return window.mostrarToast('Sube el CSV de precios exportado por Gelia.', 'red');
+    }
+
+    const formData = new FormData();
+    formData.append('archivo_precios_locales', inputCsv.files[0]);
+    formData.append('_token', tokenInput.value);
+
+    window.mostrarCarga('Actualizando base de datos local de precios...');
+    try {
+        const response = await fetch('/woocommerce/precios/locales', { 
+            method: 'POST', 
+            body: formData,
+            headers: { 'Accept': 'application/json' }
+        });
+        
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || 'Fallo en la actualización local.');
+
+        window.mostrarToast(data.message, 'green');
+        setTimeout(() => window.location.reload(), 1500);
+    } catch (e) {
+        window.ocultarCarga();
+        window.mostrarToast(e.message, 'red');
+    }
+};
+
 // 4. Tracker de Tareas en Segundo Plano (Seguro)
 function trackearProgreso(logId) {
     const intervalo = setInterval(async () => {

@@ -242,7 +242,9 @@ class BellaromaCargaPreciosController extends Controller
         $request->validate(['listado_aromas' => 'required|file']);
 
         $preciosWizerp = $this->extraerPreciosDesdeExcel($request->file('listado_aromas')->getRealPath());
-        $total = WoocommerceProduct::count();
+        
+        // CORRECCIÓN: Contamos los items válidos del Excel, no los de la BD.
+        $total = count($preciosWizerp);
 
         $log = WoocommerceSyncLog::create([
             'total_productos' => $total,
@@ -429,6 +431,45 @@ class BellaromaCargaPreciosController extends Controller
     }
 
     /**
+     * Sincroniza los precios en la base de datos local utilizando un archivo CSV exportado por Gelia.
+     * Evita consultas a la API de WooCommerce.
+     */
+    public function actualizarPreciosLocales(Request $request)
+    {
+        $request->validate(['archivo_precios_locales' => 'required|file|mimes:csv,txt']);
+        $path = $request->file('archivo_precios_locales')->getRealPath();
+
+        $productosActualizados = 0;
+
+        // Utilizamos FastExcel para iterar el CSV eficientemente sin saturar memoria
+        (new FastExcel)->import($path, function ($linea) use (&$productosActualizados) {
+            // Normalización de claves para evitar errores por mayúsculas/minúsculas en cabeceras
+            $linea = array_change_key_case($linea, CASE_LOWER);
+            
+            $sku = trim((string)($linea['sku'] ?? ''));
+            $precioNormal = isset($linea['precio normal']) ? (float)$linea['precio normal'] : null;
+            $precioRebaja = isset($linea['precio rebajado']) ? (float)$linea['precio rebajado'] : null;
+
+            if ($sku !== '' && $precioNormal !== null) {
+                $actualizado = WoocommerceProduct::where('sku', $sku)->update([
+                    'precio_normal' => $precioNormal,
+                    'precio_rebajado' => $precioRebaja,
+                    'updated_at' => now()
+                ]);
+
+                if ($actualizado) {
+                    $productosActualizados++;
+                }
+            }
+        });
+
+        return response()->json([
+            'success' => true, 
+            'message' => "Se actualizaron internamente los precios de {$productosActualizados} productos."
+        ]);
+    }
+
+    /**
      * Retorna la vista o los datos de productos con anomalías
      */
     public function alertasInventario()
@@ -494,7 +535,10 @@ class BellaromaCargaPreciosController extends Controller
                 'estado' => 'cancelado',
             ]);
 
-            return back()->with('success', 'El proceso fantasma fue cancelado exitosamente.');
+            // Fuerzas al worker a reiniciar su memoria y matar procesos estancados.
+            \Illuminate\Support\Facades\Artisan::call('queue:restart');
+
+            return back()->with('success', 'El proceso fue cancelado y el motor de colas ha sido reiniciado.');
         }
 
         return back()->with('error', 'El proceso no se puede cancelar porque ya finalizó o dio error.');

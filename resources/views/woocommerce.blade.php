@@ -71,22 +71,55 @@
             <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
                 <span class="w-2 h-5 bg-blue-500 rounded"></span> Sincronizar Base de Datos
             </h2>
-            <div class="mb-6">
-                <x-upload-area id="woocommerce-csv" name="woocommerce_csv" title="CSV Export de Woo" colorTheme="blue" accept=".csv" />
-            </div>
-            <button onclick="sincronizarCatalogo()" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all">
-                Actualizar Productos Locales
-            </button>
 
+            <!-- INSTRUCCIONES DE EXPORTACIÓN WOOCOMMERCE -->
+            <div class="mb-6 p-4 bg-blue-900/20 border border-blue-500/30 rounded-xl">
+                <h3 class="text-sm font-bold text-blue-400 mb-2">Instrucciones de Exportación</h3>
+                <ul class="text-xs text-gray-300 list-disc list-inside space-y-1">
+                    <li>Para sincronizar el catálogo local, exporta desde WooCommerce los siguientes campos: <strong>ID, SKU, Nombre, Tipo, Superior</strong>.</li>
+                    <li>Para actualizar precios masivamente sin usar la API, usa el archivo generado por Gelia que contiene: <strong>SKU, Precio normal, Precio rebajado</strong>.</li>
+                </ul>
+            </div>
+
+            <!-- SECCIÓN 1: ACTUALIZACIÓN LOCAL DE PRECIOS -->
+            <div class="mt-8 pt-6 border-t border-dark-700 mb-8">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="w-2 h-5 bg-green-500 rounded"></span> Actualizar Precios en Local (Gelia Export)
+                </h3>
+                <form id="form-precios-locales" enctype="multipart/form-data">
+                    @csrf
+                    <div class="mb-4">
+                        <x-upload-area id="archivo-precios-locales" name="archivo_precios_locales" title="CSV Export de Precios (Gelia)" colorTheme="green" accept=".csv" />
+                    </div>
+                    <button type="button" onclick="sincronizarPreciosLocales()" class="w-full py-3 bg-dark-700 text-green-400 font-bold rounded-xl border border-green-500/30 hover:bg-green-600 hover:text-white transition-all shadow-sm">
+                        Actualizar Precios Internos
+                    </button>
+                </form>
+            </div>
+
+            <!-- SECCIÓN 2: ACTUALIZAR ESTRUCTURA DESDE WOOCOMMERCE -->
+            <div class="mt-8 pt-6 border-t border-dark-700 mb-8">
+                <h3 class="text-sm font-bold text-white mb-4 flex items-center gap-2">
+                    <span class="w-2 h-5 bg-blue-400 rounded"></span> Sincronizar Estructura (WooCommerce Export)
+                </h3>
+                <div class="mb-4">
+                    <x-upload-area id="woocommerce-csv" name="woocommerce_csv" title="CSV Export de Woo" colorTheme="blue" accept=".csv" />
+                </div>
+                <button type="button" onclick="sincronizarCatalogo()" class="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-500 transition-all shadow-sm">
+                    Actualizar Productos Locales
+                </button>
+            </div>
+
+            <!-- SECCIÓN 3: EXTRACCIÓN API EN VIVO -->
             <div class="mt-8 pt-6 border-t border-dark-700">
                 <h3 class="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                    <svg class="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg class="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                     Sincronización Secundaria (API)
                 </h3>
                 <p class="text-xs text-dark-muted mb-4">Descarga los precios en vivo desde WooCommerce para mostrarlos en la tabla local.</p>
-                <button type="button" onclick="descargarPreciosWoo()" class="w-full py-3 bg-dark-700 text-green-400 font-bold rounded-xl border border-green-500/30 hover:bg-green-600 hover:text-white transition-all flex justify-center items-center gap-2">
+                <button type="button" onclick="descargarPreciosWoo()" class="w-full py-3 bg-dark-700 text-purple-400 font-bold rounded-xl border border-purple-500/30 hover:bg-purple-600 hover:text-white transition-all flex justify-center items-center gap-2 shadow-sm">
                     <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
@@ -272,7 +305,7 @@
 
 <div id="modal-previsualizacion" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center backdrop-blur-sm">
     <div class="bg-dark-800 border border-dark-700 rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col m-4">
-        
+
         <div class="p-6 border-b border-dark-700 flex justify-between items-center bg-dark-900/50 rounded-t-2xl">
             <div>
                 <h2 class="text-xl font-bold text-white flex items-center gap-2">
@@ -284,7 +317,9 @@
                 <p class="text-sm text-dark-muted mt-1" id="texto-resumen-cambios">Se detectaron N productos con cambios en su precio.</p>
             </div>
             <button onclick="cerrarModalPrevisualizacion()" class="text-gray-500 hover:text-white transition-colors">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
             </button>
         </div>
 
@@ -299,7 +334,7 @@
                     </tr>
                 </thead>
                 <tbody id="tabla-previsualizacion" class="divide-y divide-dark-700 bg-dark-800">
-                    </tbody>
+                </tbody>
             </table>
         </div>
 

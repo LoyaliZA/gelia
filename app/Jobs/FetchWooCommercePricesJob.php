@@ -11,12 +11,12 @@ use App\Models\WoocommerceProduct;
 use App\Models\WoocommerceSyncLog;
 use App\Models\WoocommerceSyncDetail;
 
-// CAMBIO NUEVO: Importación del Trait
+// Importación del Trait
 use App\Traits\InteractsWithWooCommerceApi;
 
 class FetchWooCommercePricesJob implements ShouldQueue
 {
-    // CAMBIO NUEVO: Implementación del Trait en la clase
+    // Implementación del Trait en la clase
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, InteractsWithWooCommerceApi;
 
     protected $syncLogId;
@@ -33,7 +33,6 @@ class FetchWooCommercePricesJob implements ShouldQueue
 
         $log->update(['estado' => 'en_proceso']);
 
-        // CAMBIO NUEVO: Lectura de la URL dinámica desde la configuración segura.
         $baseUrl = config('services.woocommerce.url') . '/wp-json/wc/v3/products';
 
         $page = 1;
@@ -41,7 +40,13 @@ class FetchWooCommercePricesJob implements ShouldQueue
 
         do {
             try {
-                // CAMBIO NUEVO: Uso del cliente HTTP del Trait para operaciones de lectura.
+
+                // CORRECCIÓN: Revisar si el usuario canceló desde la interfaz antes de hacer la siguiente petición
+                if ($log->fresh()->estado === 'cancelado') {
+                    return; // Aborta la ejecución inmediatamente
+                }
+
+
                 $response = $this->getWooClient('GeliaSystem-FetchBot/1.0')
                     ->get($baseUrl, [
                         'per_page' => 100,
@@ -49,8 +54,9 @@ class FetchWooCommercePricesJob implements ShouldQueue
                         '_fields'  => 'id,sku,regular_price,sale_price'
                     ]);
 
-                // CAMBIO NUEVO: Validación de red centralizada.
-                $this->validateSecurityResponse($response);
+                if (!$response->successful()) {
+                    throw new \Exception('Error en la API de WooCommerce: ' . $response->body());
+                }
 
                 $productosWoo = $response->json();
                 if (empty($productosWoo)) break;
@@ -61,10 +67,8 @@ class FetchWooCommercePricesJob implements ShouldQueue
                 $log->update(['procesados' => $procesados]);
                 $page++;
 
-                usleep(350000); // 0.35 segundos para prevenir bloqueos
-
+                $this->aplicarLatenciaSegura();
             } catch (\Exception $e) {
-                // Captura de errores provenientes de validateSecurityResponse
                 $log->update(['estado' => 'error', 'mensaje' => $e->getMessage()]);
                 return;
             }
