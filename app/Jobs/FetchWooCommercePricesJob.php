@@ -46,7 +46,6 @@ class FetchWooCommercePricesJob implements ShouldQueue
                     return; // Aborta la ejecución inmediatamente
                 }
 
-
                 $response = $this->getWooClient('GeliaSystem-FetchBot/1.0')
                     ->get($baseUrl, [
                         'per_page' => 100,

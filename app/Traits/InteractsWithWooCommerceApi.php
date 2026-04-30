@@ -13,19 +13,22 @@ trait InteractsWithWooCommerceApi
      */
     protected function getWooClient(string $botName = 'GeliaSystem-Bot/1.0'): PendingRequest
     {
+        $key = config('services.woocommerce.key');
+        $secret = config('services.woocommerce.secret');
+
+        if (empty($key) || empty($secret)) {
+            throw new \Exception('Fallo crítico: Las credenciales de WooCommerce (Key/Secret) no están configuradas o la caché no se ha limpiado.');
+        }
+
         return Http::withHeaders([
             'User-Agent'       => $botName,
             'Accept'           => 'application/json',
             'X-Requested-With' => 'XMLHttpRequest',
             'Connection'       => 'keep-alive'
         ])
-        ->withBasicAuth(
-            config('services.woocommerce.key'), 
-            config('services.woocommerce.secret')
-        )
+        ->withBasicAuth($key, $secret)
         ->timeout(60)
         ->retry(3, 1500, function ($exception, $request) {
-            // Reintenta automáticamente si el WAF responde con un 429 (Too Many Requests) antes del validateSecurityResponse
             return $exception->response && $exception->response->status() === 429;
         });
     }
