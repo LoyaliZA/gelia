@@ -400,6 +400,47 @@ class BellaromaCargaPreciosController extends Controller
         });
     }
 
+    /**
+     * Consulta el precio de un producto específico directamente a la API de WooCommerce.
+     * Utiliza el Trait para garantizar la evasión del WAF.
+     */
+    public function consultarPrecioIndividual($id)
+    {
+        $producto = WoocommerceProduct::findOrFail($id);
+        $baseUrl = config('services.woocommerce.url');
+
+        try {
+            // Utilizamos el cliente HTTP blindado
+            $response = $this->getWooClient('GeliaSystem-SingleTest/1.0')
+                             ->get("{$baseUrl}/wp-json/wc/v3/products/{$producto->id}");
+
+            $this->validateSecurityResponse($response);
+            $data = $response->json();
+
+            $nuevoNormal = isset($data['regular_price']) && $data['regular_price'] !== '' ? (float) $data['regular_price'] : null;
+            $nuevoRebajado = isset($data['sale_price']) && $data['sale_price'] !== '' ? (float) $data['sale_price'] : null;
+
+            // Mantenemos la base de datos local sincronizada
+            $producto->update([
+                'precio_normal' => $nuevoNormal,
+                'precio_rebajado' => $nuevoRebajado
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Precio actualizado desde WooCommerce.',
+                'precio_normal' => $nuevoNormal,
+                'precio_rebajado' => $nuevoRebajado
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false, 
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function actualizarPrecioIndividual(Request $request, $id)
     {
         $request->validate([

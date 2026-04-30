@@ -406,6 +406,38 @@ window.guardarEdicionIndividual = async () => {
 };
 
 /**
+ * Petición asíncrona para traer el precio de un solo producto desde la API.
+ */
+window.consultarPrecioIndividualWoo = async (id) => {
+    window.mostrarCarga('Consultando precio en WooCommerce...');
+    
+    try {
+        const res = await fetch(`/woocommerce/api/producto/${id}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        });
+        
+        const data = await res.json();
+        window.ocultarCarga();
+
+        if (res.ok && data.success) {
+            window.mostrarToast(data.message, 'green');
+            // Recargamos para que la tabla refleje el nuevo dato. 
+            // Para mayor optimización a futuro, podríamos actualizar el DOM directamente.
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            throw new Error(data.message || 'Error al consultar la API.');
+        }
+    } catch (e) {
+        window.ocultarCarga();
+        window.mostrarToast(e.message, 'red');
+    }
+};
+
+/**
  * Listener global para Componentes de Subida de Archivos (upload-area)
  * Detecta cambios en cualquier input con la clase .file-input-custom
  * y actualiza dinámicamente el label original sin alterar el DOM del componente.

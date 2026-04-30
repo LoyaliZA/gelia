@@ -266,6 +266,9 @@
                             @endif
                         </a>
                     </th>
+                    <th class="px-6 py-4 text-center text-xs text-gray-400 uppercase font-bold">
+                        Acciones
+                    </th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-dark-700 bg-dark-800">
@@ -290,6 +293,23 @@
                                     {{ $producto->precio_rebajado ? '$'.number_format($producto->precio_rebajado, 2) : '---' }}
                                 </p>
                             </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-center">
+                        <div class="flex items-center justify-center gap-2">
+                            <!-- Botón: Consultar API -->
+                            <button type="button" onclick="consultarPrecioIndividualWoo({{ $producto->id }})" class="p-1.5 bg-blue-900/30 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg border border-blue-500/30 transition-all" title="Consultar precio en WooCommerce">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                            </button>
+
+                            <!-- Botón: Editar y Subir -->
+                            <button type="button" onclick="abrirModalEdicion({{ $producto->id }}, '{{ $producto->sku }}', {{ $producto->precio_normal ?? 0 }}, {{ $producto->precio_rebajado ?? 0 }})" class="p-1.5 bg-purple-900/30 text-purple-400 hover:bg-purple-600 hover:text-white rounded-lg border border-purple-500/30 transition-all" title="Editar y subir precio">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
                         </div>
                     </td>
                 </tr>
