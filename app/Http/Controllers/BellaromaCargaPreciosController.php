@@ -243,8 +243,26 @@ class BellaromaCargaPreciosController extends Controller
 
         $preciosWizerp = $this->extraerPreciosDesdeExcel($request->file('listado_aromas')->getRealPath());
         
-        // CORRECCIÓN: Contamos los items válidos del Excel, no los de la BD.
-        $total = count($preciosWizerp);
+        // 1. Extraemos los parámetros de cálculo
+        $configIva = WoocommerceConfig::where('llave', 'iva')->first();
+        $iva = $configIva ? (float) $configIva->valor : 1.16;
+        $margenes = WoocommerceMargin::orderBy('precio_min')->get();
+
+        // 2. Comparamos contra la BD para obtener SOLO los que tienen cambios reales
+        $cambios = $this->generarAnalisisDeCambios($preciosWizerp, $iva, $margenes);
+        
+        // 3. Filtramos el array original para enviar solo los SKUs necesarios al Job
+        $preciosFiltrados = [];
+        foreach ($cambios as $cambio) {
+            $preciosFiltrados[$cambio['sku']] = $preciosWizerp[$cambio['sku']];
+        }
+
+        $total = count($preciosFiltrados);
+
+        // Validación extra: Si no hay cambios, no iniciamos el Job
+        if ($total === 0) {
+            return response()->json(['success' => false, 'message' => 'No hay cambios en los precios para sincronizar.']);
+        }
 
         $log = WoocommerceSyncLog::create([
             'total_productos' => $total,
@@ -252,7 +270,8 @@ class BellaromaCargaPreciosController extends Controller
             'estado' => 'pendiente'
         ]);
 
-        UpdateWooCommercePricesJob::dispatch($log->id, $preciosWizerp);
+        // Mandamos al worker únicamente el array filtrado
+        UpdateWooCommercePricesJob::dispatch($log->id, $preciosFiltrados);
 
         return response()->json(['success' => true, 'log_id' => $log->id]);
     }
