@@ -10,7 +10,8 @@ use App\Http\Controllers\AromasTransaccionController;
 use App\Http\Controllers\AromasAvisosController; // <-- NUEVO MÓDULO DE AVISOS DE MERCANCÍA
 use App\Http\Controllers\AuthController; // <-- CONTROLADOR DE AUTENTICACIÓN
 use App\Http\Controllers\AromasAsistenciaController; // <-- NUEVO MÓDULO DE ASISTENCIA TÉCNICA
-use \App\Http\Controllers\ContabilidadController; // <-- NUEVO CONTROLADOR PARA CONTABILIDAD BELLAROMA  
+use \App\Http\Controllers\ContabilidadController; // <-- NUEVO CONTROLADOR PARA CONTABILIDAD BELLAROMA
+use App\Http\Controllers\AromasLimpiezaController; // <-- NUEVO CONTROLADOR PARA LIMPIEZA DE CSV  
 
 
 // =========================================================
@@ -69,6 +70,12 @@ Route::prefix('aromas')->group(function () {
     // ---------------------------------------------------------
     Route::get('/asistencia', [AromasAsistenciaController::class, 'index'])->name('aromas.asistencia.index');
     Route::post('/asistencia/procesar', [AromasAsistenciaController::class, 'procesar'])->name('aromas.asistencia.procesar');
+
+    // ---------------------------------------------------------
+    // 7. MÓDULO DE LIMPIEZA DE CSV (El nuevo módulo de limpieza de datos)
+    // ---------------------------------------------------------
+    Route::get('/limpieza', [AromasLimpiezaController::class, 'index'])->name('aromas.limpieza.index');
+Route::post('/limpieza/procesar', [AromasLimpiezaController::class, 'procesar'])->name('aromas.limpieza.procesar');
 });
 
 // =========================================================
