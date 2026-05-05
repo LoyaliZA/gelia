@@ -317,11 +317,7 @@
 <script>
     window.BellaromaConfig = {
         horaNotificacion: "{{ $horaNotificacion ?? '' }}",
-        generadoHoy: {
-            {
-                $generadoHoy ? 'true' : 'false'
-            }
-        }
+        generadoHoy: {{ $generadoHoy ? 'true' : 'false' }}
     };
 </script>
 @vite(['resources/js/app.js', 'resources/js/bellaroma.js'])
