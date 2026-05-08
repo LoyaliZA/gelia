@@ -3,7 +3,7 @@ let ordenCreacion = [];
 
 const camposPorArchivo = {
     'existencias': ['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio'],
-    'precios': ['PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado'],
+    'precios': ['PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'VentaEspecial', 'ListaBoutique', 'CostoCalculado'],
     'costos': ['CostoWizerp']
 };
 
@@ -91,7 +91,7 @@ const PIN_SISTEMA = "1998"; // Define aquí tu contraseña
 // Valores por defecto seguros por si la BD está vacía tras una migración
 const defaultSettings = {
     bronce: 12.39, plata: 14.14, oro: 15.89, 
-    diamante: 17.65, plataformas: 23.00, lista3: 14.28, lista4: 17.71
+    diamante: 17.65, plataformas: 23.00, lista3: 14.28, lista4: 17.71, venta_especial: 16.00
 };
 
 window.abrirModalConfiguracion = async function() {
@@ -100,10 +100,10 @@ window.abrirModalConfiguracion = async function() {
         const response = await fetch(window.GeliaConfig.routes.obtener_config);
         const config = await response.json();
         
-        const keys = ['bronce', 'plata', 'oro', 'diamante', 'plataformas', 'lista3', 'lista4'];
+        // Se agregó 'venta_especial' al arreglo
+        const keys = ['bronce', 'plata', 'oro', 'diamante', 'plataformas', 'lista3', 'lista4', 'venta_especial'];
         keys.forEach(key => {
             const input = document.getElementById(`input-pct-${key}`);
-            // Si la BD tiene el valor lo usa, si no, usa el default
             if (input) input.value = config[`pct_${key}`] || defaultSettings[key];
         });
 
@@ -142,7 +142,8 @@ window.cerrarModalConfiguracion = function () {
 
 window.guardarConfiguracionGlobal = async function() {
     const formData = new FormData();
-    const keys = ['bronce', 'plata', 'oro', 'diamante', 'plataformas', 'lista3', 'lista4'];
+    // Se agregó 'venta_especial' al arreglo
+    const keys = ['bronce', 'plata', 'oro', 'diamante', 'plataformas', 'lista3', 'lista4', 'venta_especial'];
     
     keys.forEach(key => {
         formData.append(`pct_${key}`, document.getElementById(`input-pct-${key}`).value);
@@ -150,7 +151,6 @@ window.guardarConfiguracionGlobal = async function() {
 
     window.mostrarCarga("Sincronizando cambios...");
 
-    // Extracción segura del Token CSRF (Evita el "crash" de JS)
     const tokenCSRF = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || document.querySelector('input[name="_token"]')?.value || '';
 
     try {
@@ -322,10 +322,11 @@ window.procesarSolicitud = async function (tipo) {
 
     // Configuración base inmutable por si no existen en localStorage
     const listasDefault = {
-        'resurtido': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Bronce', 'Plata', 'Oro', 'Diamante'],
+        'resurtido': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Plataformas', 'Bronce'],
         'costos': ['Almacen', 'SKU', 'Descripcion', 'Existencia', 'CostoWizerp'],
         'actualizada': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'CostoCalculado', 'Plataformas'],
-        'inventario': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Lista3']
+        'inventario': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'Bronce'],
+        'venta_especial': ['Folio', 'SKU', 'Descripcion', 'Existencia', 'PG', 'VentaEspecial'] // Integración de la nueva lista
     };
 
     if (!isNaN(tipo)) {

@@ -27,7 +27,7 @@ class AromasListasController extends Controller
             'archivos_requeridos' => 'required|array',
             'columnas_exportar' => 'required|string',
             'nombre_archivo_salida' => 'required|string|max:50',
-            'filtro_relojes' => 'nullable|boolean' // Validación añadida
+            'filtro_relojes' => 'nullable|boolean', // Validación añadida
         ]);
 
         if ($validator->fails()) {
@@ -110,15 +110,16 @@ class AromasListasController extends Controller
 
         // Mapeo con valores de respaldo (defaults) si la tabla está vacía
         $multiplicadores = [
-            'bronce'      => 1 - ((float)($settings['pct_bronce'] ?? 12.39) / 100),
-            'plata'       => 1 - ((float)($settings['pct_plata'] ?? 14.14) / 100),
-            'oro'         => 1 - ((float)($settings['pct_oro'] ?? 15.89) / 100),
-            'diamante'    => 1 - ((float)($settings['pct_diamante'] ?? 17.65) / 100),
-            'plataformas' => 1 - ((float)($settings['pct_plataformas'] ?? 23.00) / 100), // Ejemplo 23%
-            'lista3'      => 1 - ((float)($settings['pct_lista3'] ?? 14.28) / 100),
-            'lista4'      => 1 - ((float)($settings['pct_lista4'] ?? 17.71) / 100),
-            'boutique'    => 0.75,
-            'divisor_costo' => 1.3827
+            'bronce'         => 1 - ((float)($settings['pct_bronce'] ?? 12.39) / 100),
+            'plata'          => 1 - ((float)($settings['pct_plata'] ?? 14.14) / 100),
+            'oro'            => 1 - ((float)($settings['pct_oro'] ?? 15.89) / 100),
+            'diamante'       => 1 - ((float)($settings['pct_diamante'] ?? 17.65) / 100),
+            'plataformas'    => 1 - ((float)($settings['pct_plataformas'] ?? 23.00) / 100),
+            'lista3'         => 1 - ((float)($settings['pct_lista3'] ?? 14.28) / 100),
+            'lista4'         => 1 - ((float)($settings['pct_lista4'] ?? 17.71) / 100),
+            'venta_especial' => 1 - ((float)($settings['pct_venta_especial'] ?? 25.00) / 100),
+            'boutique'       => 0.75,
+            'divisor_costo'  => 1.3827
         ];
 
         $tipoLista = $request->input('tipo_lista', 'PERSONALIZADA');
@@ -149,6 +150,9 @@ class AromasListasController extends Controller
                     break;
                 case 'inventario':
                     $nombreArchivo = "LISTA-DE-INVENTARIO-$fecha.xlsx";
+                    break;
+                case 'venta_especial':
+                    $nombreArchivo = "VENTA-ESPECIAL-0+-$fecha.xlsx";
                     break;
                 default:
                     $nombreArchivo = "LISTA-PERSONALIZADA-$fecha.xlsx";
@@ -211,7 +215,7 @@ class AromasListasController extends Controller
             });
         }
 
-        // 5. PROCESAR EXISTENCIAS (Actualización del closure)
+        // 5. PROCESAR EXISTENCIAS
         $listaCompleta = [];
         $inconsistencias = [];
         $tienePrecios = $request->hasFile('precios');
@@ -290,6 +294,9 @@ class AromasListasController extends Controller
                             break;
                         case 'Lista4':
                             $fila['Lista4'] = round($pg * $multiplicadores['lista4'], 2);
+                            break;
+                        case 'VentaEspecial':
+                            $fila['Venta Especial'] = round($pg * $multiplicadores['venta_especial'], 2);
                             break;
                         case 'ListaBoutique':
                             $fila['Lista Boutique'] = round($pg * $multiplicadores['boutique'], 2);

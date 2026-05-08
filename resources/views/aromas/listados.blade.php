@@ -1,9 +1,10 @@
-@extends('layouts.aromas') @section('aromas-content')
+@extends('layouts.aromas') 
 
 @section('title', 'Listados e Inventario | Gelia Hub')
 
 @section('aromas-content')
 
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
 <div id="modal-nueva-lista" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
     <div class="bg-dark-800 border border-dark-700 w-full max-w-4xl rounded-xl shadow-2xl max-h-[90vh] overflow-y-auto">
@@ -91,10 +92,11 @@
                     <label class="block text-sm font-bold text-white mb-2">2. Selecciona Columnas (En orden):</label>
                     <p class="text-xs text-dark-muted mb-2">Haz clic para anadir/quitar. El numero indica el orden.</p>
                     <div class="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
-                        @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique', 'CostoCalculado', 'CostoWizerp'] as $campo)
+                        @foreach(['SKU', 'Descripcion', 'Marca', 'Existencia', 'Almacen', 'Folio', 'PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'VentaEspecial', 'ListaBoutique', 'CostoCalculado', 'CostoWizerp'] as $campo)
                         @php
                         $nombreMostrar = $campo;
                         if($campo == 'ListaBoutique') $nombreMostrar = 'Lista Boutique';
+                        if($campo == 'VentaEspecial') $nombreMostrar = 'Venta Especial';
                         if($campo == 'CostoCalculado') $nombreMostrar = 'Costo (L.Resurtido)';
                         if($campo == 'CostoWizerp') $nombreMostrar = 'Costos (L. Costos)';
                         @endphp
@@ -183,7 +185,8 @@
                 $campos = [
                     'bronce' => 'Bronce', 'plata' => 'Plata', 'oro' => 'Oro', 
                     'diamante' => 'Diamante', 'plataformas' => 'Plataformas',
-                    'lista3' => 'Lista 3', 'lista4' => 'Lista 4'
+                    'lista3' => 'Lista 3', 'lista4' => 'Lista 4',
+                    'venta_especial' => 'Venta Especial'
                 ];
             @endphp
 
@@ -230,8 +233,6 @@
 <form id="form-principal" enctype="multipart/form-data">
     @csrf
 
-    
-
     <h2 class="text-xl font-bold text-white mb-4 flex items-center">
         <span class="bg-aromas-main w-2 h-6 rounded mr-2"></span> Zona de Carga Principal
     </h2>
@@ -263,22 +264,26 @@
         <h2 class="text-xl font-bold text-white mb-4 flex items-center">
             <span class="bg-emerald-600 w-2 h-6 rounded mr-2"></span> Listas Predeterminadas
         </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <button type="button" onclick="procesarSolicitud('resurtido')" class="p-4 bg-dark-800 border border-dark-700 hover:border-aromas-main hover:bg-dark-700 rounded-xl text-left group transition">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <button type="button" onclick="procesarSolicitud('resurtido')" class="p-4 bg-dark-800 border border-dark-700 hover:border-aromas-main hover:bg-dark-700 rounded-xl text-left group transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
                 <span class="block text-aromas-main font-bold mb-1 group-hover:text-aromas-light">Lista de Resurtido</span>
                 <span class="block text-[10px] text-dark-muted uppercase">Estandar: PG, Plataformas, Lista3</span>
             </button>
-            <button type="button" onclick="procesarSolicitud('costos')" class="p-4 bg-dark-800 border border-dark-700 hover:border-purple-500 hover:bg-dark-700 rounded-xl text-left group transition">
+            <button type="button" onclick="procesarSolicitud('costos')" class="p-4 bg-dark-800 border border-dark-700 hover:border-purple-500 hover:bg-dark-700 rounded-xl text-left group transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
                 <span class="block text-purple-400 font-bold mb-1 group-hover:text-purple-300">Lista de Costos</span>
                 <span class="block text-[10px] text-dark-muted uppercase">Estandar: Costos Wizerp</span>
             </button>
-            <button type="button" onclick="procesarSolicitud('actualizada')" class="p-4 bg-dark-800 border border-dark-700 hover:border-orange-500 hover:bg-dark-700 rounded-xl text-left group transition">
+            <button type="button" onclick="procesarSolicitud('actualizada')" class="p-4 bg-dark-800 border border-dark-700 hover:border-orange-500 hover:bg-dark-700 rounded-xl text-left group transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
                 <span class="block text-orange-400 font-bold mb-1 group-hover:text-orange-300">Actualizada</span>
                 <span class="block text-[10px] text-dark-muted uppercase">Estandar: Costo Calc + Plataformas</span>
             </button>
-            <button type="button" onclick="procesarSolicitud('inventario')" class="p-4 bg-dark-800 border border-dark-700 hover:border-teal-500 hover:bg-dark-700 rounded-xl text-left group transition">
+            <button type="button" onclick="procesarSolicitud('inventario')" class="p-4 bg-dark-800 border border-dark-700 hover:border-teal-500 hover:bg-dark-700 rounded-xl text-left group transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg">
                 <span class="block text-teal-400 font-bold mb-1 group-hover:text-teal-300">Inventario Bellaroma</span>
                 <span class="block text-[10px] text-dark-muted uppercase">Estandar: PG + Lista3</span>
+            </button>
+            <button type="button" onclick="procesarSolicitud('venta_especial')" class="p-4 bg-dark-800 border border-dark-700 hover:border-pink-500 hover:bg-dark-700 rounded-xl text-left group transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg hover:shadow-pink-500/20">
+                <span class="block text-pink-400 font-bold mb-1 group-hover:text-pink-300 transition-colors">Venta Especial</span>
+                <span class="block text-[10px] text-dark-muted uppercase">Estandar: PG + VentaEspecial</span>
             </button>
         </div>
     </div>
@@ -347,8 +352,12 @@
             </label>
             @endforeach
 
-            @foreach(['PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'ListaBoutique'] as $campo)
-            @php $nombreMostrar = $campo == 'ListaBoutique' ? 'Lista Boutique' : $campo; @endphp
+            @foreach(['PG', 'Bronce', 'Plata', 'Oro', 'Diamante', 'Plataformas', 'Lista3', 'Lista4', 'VentaEspecial', 'ListaBoutique'] as $campo)
+            @php 
+                $nombreMostrar = $campo;
+                if($campo == 'ListaBoutique') $nombreMostrar = 'Lista Boutique';
+                if($campo == 'VentaEspecial') $nombreMostrar = 'Venta Especial';
+            @endphp
             <label id="label-{{ $campo }}" class="relative flex items-center space-x-2 bg-dark-800 p-3 rounded-lg border border-dark-700 select-none disabled-option transition-all duration-300">
                 <input type="checkbox" id="check-{{ $campo }}" value="{{ $campo }}" onchange="actualizarOrden(this)" disabled class="w-4 h-4 text-aromas-main rounded bg-dark-900 border-dark-700">
                 <span class="text-sm font-medium text-gray-300">{{ $nombreMostrar }}</span>
@@ -386,12 +395,11 @@
             actualizar: "{{ route('gelia.actualizar', ['id' => ':id']) }}",
             eliminar: "{{ route('gelia.eliminar', ['id' => ':id']) }}",
             descargar_temporal: "{{ route('gelia.descargar-temporal') }}",
-            
-            // ---> RUTAS FALTANTES QUE CAUSABAN EL ERROR <---
             obtener_config: "{{ route('gelia.config.obtener') }}",
             guardar_config: "{{ route('gelia.config.guardar') }}"
         },
-        customLists: @json($listasPersonalizadas ?? [])
+        customLists: @json($listasPersonalizadas ?? []),
+        csrfToken: "{{ csrf_token() }}"
     };
 </script>
 @endpush

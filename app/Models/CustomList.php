@@ -20,6 +20,7 @@ class CustomList extends Model
         'active',
         'solo_con_existencia', // Nueva columna para filtrar solo productos con existencia
         'filtro_relojes', // Nueva columna para filtrar solo productos que inician con 'R'
+        'pct_venta_especial', // Nueva columna para el porcentaje específico de la lista
     ];
 
     // Esto hace la magia: convierte el JSON de la BD a Array de PHP automáticamente
@@ -28,5 +29,6 @@ class CustomList extends Model
         'columnas_exportar' => 'array',
         'active' => 'boolean',
         'solo_con_existencia' => 'boolean', // Asegura que esta columna también se trate como booleano
+        'pct_venta_especial' => 'decimal:2', // Asegura que esta columna también se trate como decimal
     ];
 }
